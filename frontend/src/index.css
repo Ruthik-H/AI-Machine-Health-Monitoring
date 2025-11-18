@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Remove forced white or dark overrides */
+body {
+  @apply bg-gray-50 text-gray-900 transition-colors duration-300;
+}
+
+/* DARK MODE BODY */
+.dark body {
+  @apply bg-gray-900 text-gray-100;
+}
+
+/* Optional glass effect components */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px);
+  border-radius: 14px;
+}
+
+* {
+  transition: 0.25s ease;
+}
