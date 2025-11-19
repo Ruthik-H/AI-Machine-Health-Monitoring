@@ -1,0 +1,33 @@
+##########
+# classes
+##########
+
+TempSensor	KEYWORD1
+LM75B	KEYWORD1
+PCT2075	KEYWORD1
+P3T1085	KEYWORD1
+
+##########
+# methods and functions
+##########
+
+temp	KEYWORD2
+thresholds	KEYWORD2
+os_mode	KEYWORD2
+
+##########
+# register names
+##########
+
+Temp	KEYWORD3
+Conf	KEYWORD3
+Thyst	KEYWORD3
+Tos	KEYWORD3
+Tidle	KEYWORD3
+
+##########
+# constants
+##########
+
+COMPARATOR	LITERAL1
+INTERRUPT	LITERAL1
