@@ -5,7 +5,7 @@ import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database"; // Needed for live sensor data
 
 const firebaseConfig = {
-  apiKey: "PROTECTED!!",
+  apiKey: "AIzaSyDpFXjNixlR2lkIFnc-hPzopNPri_DkVkg",
   authDomain: "ai-machine-health-intelligence.firebaseapp.com",
   databaseURL: "https://ai-machine-health-intelligence-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "ai-machine-health-intelligence",
