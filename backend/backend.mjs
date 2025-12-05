@@ -29,28 +29,10 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// ✅ Generate Random Machine Data
-function generateData() {
-  return {
-    temperature: (40 + Math.random() * 60).toFixed(2),   // 40 to 100°C
-    vibration: (Math.random() * 10).toFixed(2),          // 0 to 10 mm/s
-    load: (Math.random() * 100).toFixed(2),              // 0 to 100%
-    rpm: Math.floor(500 + Math.random() * 2500),         // 500 - 3000 RPM
-    humidity: (20 + Math.random() * 60).toFixed(2),      // 20% - 80%
-    status: ["normal", "warning", "critical"][Math.floor(Math.random() * 3)],
-    lastUpdated: new Date().toISOString(),
-  };
-}
-
-// ✅ Update Firebase Every 3 Seconds
-setInterval(() => {
-  rtdb.ref("/").update({
-    machine1: generateData(),
-    machine2: generateData(),
-    machine3: generateData(),
-  });
-  console.log("✅ Random machine data updated");
-}, 3000);
+// ✅ BACKEND SIMULATION DISABLED
+// The ESP32 will send real sensor data directly to Firebase
+console.log("✅ Backend simulation DISABLED. Waiting for ESP32 sensor data...");
+console.log("📡 ESP32 should be sending data to Firebase at: /devices/MACHINE-33FZTIH1/sensors");
 
 // ✅ API: Return All Machine Data
 app.get("/api/machines", async (_req, res) => {
@@ -66,4 +48,5 @@ app.get("/api/machines", async (_req, res) => {
 // ✅ Start Server
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`📊 API available at: http://localhost:${PORT}/api/machines`);
 });

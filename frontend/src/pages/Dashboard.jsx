@@ -1,4 +1,3 @@
-// File: frontend/src/pages/Dashboard.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -19,7 +18,12 @@ import {
   Gauge,
   Cpu,
   HardDrive,
-  BarChart3
+  BarChart3,
+  Droplets,
+  Wind,
+  Activity,
+  Maximize,
+  Search
 } from "lucide-react";
 
 import {
@@ -32,6 +36,31 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+// Mapping of data keys to UI properties
+const SENSOR_METADATA = {
+  temperature: { label: "Temperature", unit: "°C", icon: Thermometer, color: "bg-red-500", stroke: "#ef4444", fill: "#fca5a5" },
+  humidity: { label: "Humidity", unit: "%", icon: Droplets, color: "bg-blue-400", stroke: "#60a5fa", fill: "#93c5fd" },
+  pressure: { label: "Pressure", unit: "hPa", icon: Gauge, color: "bg-gray-500", stroke: "#6b7280", fill: "#d1d5db" },
+  vibration: { label: "Vibration", unit: "mm/s", icon: Waves, color: "bg-purple-500", stroke: "#a855f7", fill: "#d8b4fe" },
+  current: { label: "Current", unit: "A", icon: Zap, color: "bg-yellow-500", stroke: "#eab308", fill: "#fde047" },
+  voltage: { label: "Voltage", unit: "V", icon: Power, color: "bg-blue-600", stroke: "#2563eb", fill: "#93c5fd" },
+  rpm: { label: "Speed", unit: "RPM", icon: Gauge, color: "bg-green-500", stroke: "#22c55e", fill: "#86efac" },
+  distance: { label: "Distance", unit: "cm", icon: Maximize, color: "bg-indigo-500", stroke: "#6366f1", fill: "#a5b4fc" },
+  co2: { label: "CO2 Level", unit: "ppm", icon: Wind, color: "bg-gray-600", stroke: "#4b5563", fill: "#9ca3af" },
+  gasLevel: { label: "Gas Level", unit: "ppm", icon: Wind, color: "bg-orange-500", stroke: "#f97316", fill: "#fdba74" },
+  airQuality: { label: "Air Quality", unit: "AQI", icon: Wind, color: "bg-green-600", stroke: "#16a34a", fill: "#86efac" },
+  soilMoisture: { label: "Soil Moisture", unit: "%", icon: Droplets, color: "bg-brown-500", stroke: "#a16207", fill: "#fde047" },
+  waterLevel: { label: "Water Level", unit: "%", icon: Droplets, color: "bg-blue-500", stroke: "#3b82f6", fill: "#93c5fd" },
+  flowRate: { label: "Flow Rate", unit: "L/min", icon: Waves, color: "bg-cyan-500", stroke: "#06b6d4", fill: "#67e8f9" },
+  motion: { label: "Motion", unit: "", icon: Activity, color: "bg-orange-600", stroke: "#ea580c", fill: "#fdba74" },
+  accX: { label: "Accel X", unit: "g", icon: Activity, color: "bg-pink-500", stroke: "#ec4899", fill: "#fbcfe8" },
+  accY: { label: "Accel Y", unit: "g", icon: Activity, color: "bg-pink-500", stroke: "#ec4899", fill: "#fbcfe8" },
+  accZ: { label: "Accel Z", unit: "g", icon: Activity, color: "bg-pink-500", stroke: "#ec4899", fill: "#fbcfe8" },
+};
+
+// Fallback for unknown sensors
+const DEFAULT_META = { label: "Sensor", unit: "", icon: Activity, color: "bg-gray-500", stroke: "#6b7280", fill: "#e5e7eb" };
+
 export default function Dashboard() {
   const navigate = useNavigate();
 
@@ -41,27 +70,18 @@ export default function Dashboard() {
   const [machines, setMachines] = useState([]);
   const [selectedMachine, setSelectedMachine] = useState("");
 
-  const [temperature, setTemperature] = useState(0);
-  const [vibration, setVibration] = useState(0);
-  const [current, setCurrent] = useState(0);
-  const [voltage, setVoltage] = useState(0);
-  const [rpm, setRpm] = useState(0);
-
-  const [tempHistory, setTempHistory] = useState([]);
-  const [currentHistory, setCurrentHistory] = useState([]);
+  // Dynamic sensor data state
+  const [sensorData, setSensorData] = useState({});
+  const [history, setHistory] = useState([]);
 
   const [alerts, setAlerts] = useState([]);
   const [machineStatus, setMachineStatus] = useState("running");
+  const [showNotifications, setShowNotifications] = useState(false);
 
-  // thresholds loaded from Firebase per-machine
-  const [thresholds, setThresholds] = useState({
-    temperature: 40,
-    vibration: 1.8,
-    current: 20,
-    rpm: 2000,
-  });
+  // Thresholds
+  const [thresholds, setThresholds] = useState({});
 
-  // voice debounce (useRef to avoid re-renders)
+  // Voice debounce
   const lastVoiceTimeRef = useRef(0);
 
   // ---------------------------------------------------
@@ -76,209 +96,122 @@ export default function Dashboard() {
   }, []);
 
   // ---------------------------------------------------
-  // LOAD DEVICE LIST (force your device id if you want)
+  // LOAD DEVICE LIST
   // ---------------------------------------------------
   useEffect(() => {
     const deviceRef = ref(db, "devices");
-
     const unsub = onValue(deviceRef, (snapshot) => {
       const data = snapshot.val() || {};
-
       const list = Object.keys(data).map((id) => ({
         deviceId: id,
         machineName: data[id]?.meta?.machineName || id,
       }));
-
       setMachines(list);
-
-      // Keep your hard-coded selection if desired, otherwise first element
-      if (!selectedMachine) {
-        // If the specific device exists prefer it, otherwise first device
-        const preferred = list.find((l) => l.deviceId === "MACHINE-33FZTIH1");
-        setSelectedMachine(preferred ? preferred.deviceId : (list[0]?.deviceId || ""));
+      if (!selectedMachine && list.length > 0) {
+        setSelectedMachine(list[0].deviceId);
       }
     });
-
-    return () => unsub();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ---------------------------------------------------
-  // LOAD THRESHOLDS FOR SELECTED MACHINE
-  // ---------------------------------------------------
-  useEffect(() => {
-    if (!selectedMachine) return;
-
-    const threshRef = ref(db, `devices/${selectedMachine}/config/thresholds`);
-    const unsub = onValue(threshRef, (snap) => {
-      const data = snap.val();
-      if (data) {
-        // keep numeric conversion and fallback
-        setThresholds({
-          temperature: Number(data.temperature ?? 40),
-          vibration: Number(data.vibration ?? 1.8),
-          current: Number(data.current ?? 20),
-          rpm: Number(data.rpm ?? 2000),
-        });
-      } else {
-        // fallback defaults - these are safe defaults if config doesn't exist yet
-        setThresholds({
-          temperature: 40,
-          vibration: 1.8,
-          current: 20,
-          rpm: 2000,
-        });
-      }
-    });
-
     return () => unsub();
   }, [selectedMachine]);
 
   // ---------------------------------------------------
-  // LOAD SENSOR DATA FOR SELECTED MACHINE
+  // LOAD THRESHOLDS
+  // ---------------------------------------------------
+  useEffect(() => {
+    if (!selectedMachine) return;
+    const threshRef = ref(db, `devices/${selectedMachine}/config/thresholds`);
+    const unsub = onValue(threshRef, (snap) => {
+      setThresholds(snap.val() || {});
+    });
+    return () => unsub();
+  }, [selectedMachine]);
+
+  // ---------------------------------------------------
+  // LOAD SENSOR DATA
   // ---------------------------------------------------
   useEffect(() => {
     if (!selectedMachine) return;
 
     const sensorRef = ref(db, `devices/${selectedMachine}/sensors`);
     const unsub = onValue(sensorRef, (snapshot) => {
-      const data = snapshot.val();
-
-      if (!data) {
-        setTemperature(0);
-        setVibration(0);
-        setCurrent(0);
-        setVoltage(0);
-        setRpm(0);
-        setAlerts([]);
-        setMachineStatus("running");
-        return;
-      }
+      const data = snapshot.val() || {};
+      setSensorData(data);
 
       const now = new Date().toLocaleTimeString();
+      setHistory((prev) => {
+        // Only keep numeric values for charts
+        const entry = { time: now };
+        Object.keys(data).forEach(k => {
+          const val = Number(data[k]);
+          if (!isNaN(val)) entry[k] = val;
+        });
 
-      const t = Number(data.temperature || 0);
-      const vib = Number(data.vibration || 0);
-      const cur = Number(data.current || 0);
-      const volt = Number(data.voltage || 0);
-      const rpmVal = Number(data.rpm || 0);
+        const newHistory = [...prev, entry];
+        return newHistory.slice(-20); // Keep last 20 points
+      });
 
-      setTemperature(t);
-      setVibration(vib);
-      setCurrent(cur);
-      setVoltage(volt);
-      setRpm(rpmVal);
-
-      setTempHistory((p) => [...p.slice(-19), { time: now, value: t }]);
-      setCurrentHistory((p) => [...p.slice(-19), { time: now, value: cur }]);
-
-      // ALERTS based on dynamic thresholds
+      // Alerts Logic
       const newAlerts = [];
-      if (t > thresholds.temperature) newAlerts.push({ type: "critical", message: `Temperature above ${thresholds.temperature}°C` });
-      if (vib > thresholds.vibration) newAlerts.push({ type: "warning", message: `Vibration above ${thresholds.vibration}` });
-      if (cur > thresholds.current) newAlerts.push({ type: "warning", message: `Current above ${thresholds.current}A` });
+      Object.keys(thresholds).forEach((key) => {
+        const val = data[key];
+        const limit = thresholds[key];
+        if (val !== undefined && val > limit) {
+          newAlerts.push({ id: Date.now() + key, type: "warning", message: `${key.toUpperCase()} (${val}) exceeds limit (${limit})` });
+        }
+      });
 
       setAlerts(newAlerts);
-
-      if (newAlerts.find((a) => a.type === "critical")) setMachineStatus("critical");
-      else if (newAlerts.length > 0) setMachineStatus("warning");
-      else setMachineStatus("running");
+      setMachineStatus(newAlerts.length > 0 ? "warning" : "running");
     });
 
     return () => unsub();
   }, [selectedMachine, thresholds]);
 
   // ---------------------------------------------------
-  // VOICE ALERTS (debounced + avoid restart)
+  // VOICE ALERTS
   // ---------------------------------------------------
   useEffect(() => {
-    if (!selectedMachine) return;
+    if (alerts.length === 0) return;
 
     const now = Date.now();
+    if (now - lastVoiceTimeRef.current < 10000) return;
 
-    // cooldown in ms
-    const COOLDOWN = 10000; // 10 seconds
-
-    // if within cooldown skip
-    if (now - lastVoiceTimeRef.current < COOLDOWN) return;
-
-    // don't speak if already speaking
-    if (typeof window !== "undefined" && "speechSynthesis" in window && speechSynthesis.speaking) {
-      // do not interrupt current speech
-      return;
-    }
-
-    let msg = "";
-    if (temperature > thresholds.temperature) {
-      msg = `Warning. Temperature is ${temperature.toFixed(1)} degrees, above the threshold ${thresholds.temperature}.`;
-    } else if (vibration > thresholds.vibration) {
-      msg = `Alert. Vibration is ${vibration.toFixed(2)}, above ${thresholds.vibration}.`;
-    } else if (current > thresholds.current) {
-      msg = `Alert. Current is ${current.toFixed(1)} amps, above ${thresholds.current}.`;
-    }
-
-    if (msg !== "" && typeof window !== "undefined" && "speechSynthesis" in window) {
+    if (window.speechSynthesis && !speechSynthesis.speaking) {
+      const msg = `Alert. ${alerts[0].message}`;
       const utter = new SpeechSynthesisUtterance(msg);
-      utter.lang = "en-US";
-
-      // When utterance finishes we could allow immediate next (optional)
-      utter.onend = () => {
-        // no-op; cooldown still enforced by timestamp
-      };
-
       speechSynthesis.speak(utter);
       lastVoiceTimeRef.current = now;
     }
-  }, [temperature, vibration, current, thresholds, selectedMachine]);
+  }, [alerts]);
 
-  // ---------------------------------------------------
-  // LOGOUT
-  // ---------------------------------------------------
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch {}
+    await signOut(auth);
     navigate("/login");
   };
 
-  // ---------------------------------------------------
-  // UI COMPONENTS
-  // ---------------------------------------------------
-  const StatusBadge = ({ status }) => {
-    const cfg = {
-      running: { icon: CheckCircle, color: "bg-green-100 text-green-700 border-green-200", text: "Running Normal" },
-      warning: { icon: AlertTriangle, color: "bg-yellow-100 text-yellow-700 border-yellow-200", text: "Warning" },
-      critical: { icon: XCircle, color: "bg-red-100 text-red-700 border-red-200", text: "Critical Alert" },
-    }[status] || { icon: CheckCircle, color: "bg-gray-100 text-gray-700", text: status };
+  const SensorCard = ({ dataKey, value }) => {
+    const meta = SENSOR_METADATA[dataKey] || { ...DEFAULT_META, label: dataKey };
+    const Icon = meta.icon;
 
-    const Icon = cfg.icon;
     return (
-      <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${cfg.color}`}>
-        <Icon className="w-5 h-5" />
-        <span className="font-semibold text-sm">{cfg.text}</span>
+      <div className="bg-white rounded-xl p-6 shadow-sm border hover:shadow-lg transition-all">
+        <div className="flex items-center justify-between mb-4">
+          <div className={`p-3 rounded-lg ${meta.color}`}>
+            <Icon className="w-6 h-6 text-white" />
+          </div>
+        </div>
+        <h3 className="text-gray-600 text-sm font-medium mb-1 capitalize">{meta.label}</h3>
+        <div className="flex items-baseline gap-2 mb-1">
+          <p className="text-3xl font-bold text-gray-900">{typeof value === 'number' ? value.toFixed(1) : value}</p>
+          <span className="text-gray-500">{meta.unit}</span>
+        </div>
       </div>
     );
   };
 
-  const SensorCard = ({ title, value, unit, icon: Icon, color }) => (
-    <div className="bg-white rounded-xl p-6 shadow-sm border hover:shadow-lg transition-all">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-lg ${color}`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
-      </div>
+  // Determine which sensors have numeric history to chart
+  const sensorKeys = Object.keys(sensorData).filter(k => !isNaN(Number(sensorData[k])));
 
-      <h3 className="text-gray-600 text-sm font-medium mb-1">{title}</h3>
-      <div className="flex items-baseline gap-2 mb-1">
-        <p className="text-3xl font-bold text-gray-900">{Number(value).toFixed(1)}</p>
-        <span className="text-gray-500">{unit}</span>
-      </div>
-    </div>
-  );
-
-  // ---------------------------------------------------
-  // RENDER
-  // ---------------------------------------------------
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -292,185 +225,234 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-
       {/* NAVBAR */}
       <nav className="bg-gradient-to-r from-slate-900 to-blue-900 text-white shadow-lg sticky top-0 z-50">
         <div className="px-6 flex justify-between h-16 items-center">
-
           <div className="flex items-center gap-3">
             <Cpu className="w-8 h-8 text-cyan-400" />
             <div>
-              <h1 className="text-xl font-bold">AI Machine Health Monitor</h1>
-              <p className="text-xs text-cyan-300">Real-time Industrial Monitoring</p>
+              <h1 className="text-xl font-bold md:block hidden">AI Machine Health Monitor</h1>
+              <h1 className="text-xl font-bold md:hidden block">AI Monitor</h1>
+              <p className="text-xs text-cyan-300 md:block hidden">Real-time Industrial Monitoring</p>
             </div>
           </div>
-
           <div className="flex items-center gap-4">
-            <StatusBadge status={machineStatus} />
+            <div className="hidden md:block">
+              <StatusBadge status={machineStatus} />
+            </div>
 
-            <button className="p-2 hover:bg-white/10 relative">
-              <Bell className="w-5 h-5" />
-              {alerts.length > 0 && (
-                <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {alerts.length}
-                </span>
+            {/* Notification Bell */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 hover:bg-white/10 rounded-full relative transition-colors"
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5 text-gray-200" />
+                {alerts.length > 0 && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 origin-top-right animate-fadeIn">
+                  <div className="px-4 py-2 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="font-bold text-gray-800">Notifications</h3>
+                    <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">{alerts.length}</span>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {alerts.length === 0 ? (
+                      <p className="text-center text-gray-400 text-sm py-8">No active alerts</p>
+                    ) : (
+                      alerts.map((alert, i) => (
+                        <div key={i} className="px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 flex gap-3">
+                          <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm text-gray-800 font-medium">{alert.message}</p>
+                            <p className="text-xs text-gray-400 mt-1">Just now</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               )}
+            </div>
+
+            {/* Settings Button */}
+            <button
+              onClick={() => navigate("/settings")}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 text-gray-200" />
             </button>
 
-            <button onClick={() => navigate("/analytics")} className="p-2 hover:bg-white/10 rounded-lg">
-              <BarChart3 className="w-5 h-5 text-purple-400" />
-            </button>
-
-            <button onClick={() => navigate("/settings")} className="p-2 hover:bg-white/10">
-              <Settings className="w-5 h-5" />
-            </button>
-
+            {/* Logout */}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg"
+              className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors border border-red-500/30"
+              title="Sign Out"
             >
-              <LogOut className="w-5 h-5" />
-              Logout
+              <LogOut className="w-4 h-4 text-red-200" />
+              <span className="text-sm hidden md:inline">Logout</span>
             </button>
           </div>
         </div>
       </nav>
 
-      {/* BODY CONTENT */}
-      <div className="p-6">
-
-        {/* TITLE + MACHINE SELECT */}
-        <div className="mb-6 flex flex-col sm:flex-row justify-between">
+      <div className="p-6 max-w-7xl mx-auto">
+        {/* HEADER */}
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-end gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Machine Status Overview</h2>
-            <p className="text-gray-600">Monitoring: {selectedMachine}</p>
-            <p className="text-xs text-gray-500">Thresholds: T {thresholds.temperature}°C · V {thresholds.vibration} · I {thresholds.current}A</p>
+            <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
+            <p className="text-gray-500 text-sm mt-1">
+              Monitoring <span className="font-semibold text-indigo-600">{selectedMachine}</span>
+            </p>
           </div>
-
-          <select
-            className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
-            value={selectedMachine}
-            onChange={(e) => setSelectedMachine(e.target.value)}
-          >
-            {machines.map((m) => (
-              <option key={m.deviceId} value={m.deviceId}>
-                {m.machineName} ({m.deviceId})
-              </option>
-            ))}
-          </select>
+          <div className="w-full md:w-64">
+            <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Select Machine</label>
+            <div className="relative">
+              <select
+                className="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 appearance-none focus:ring-2 focus:ring-indigo-500 outline-none"
+                value={selectedMachine}
+                onChange={(e) => setSelectedMachine(e.target.value)}
+              >
+                {machines.map((m) => (
+                  <option key={m.deviceId} value={m.deviceId}>
+                    {m.machineName}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* ALERTS */}
+        {/* ALERTS BANNER (Mobile/Prominent) */}
         {alerts.length > 0 && (
-          <div className="space-y-2 mb-6">
+          <div className="space-y-2 mb-8 animate-fadeIn">
             {alerts.map((alert, idx) => (
-              <div
-                key={idx}
-                className={`flex gap-3 p-4 rounded-lg border-l-4 ${
-                  alert.type === "critical"
-                    ? "bg-red-50 border-red-500"
-                    : "bg-yellow-50 border-yellow-500"
-                }`}
-              >
+              <div key={idx} className="flex gap-3 p-4 rounded-xl border-l-4 bg-red-50 border-red-500 shadow-sm">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
-                <div>
-                  <p className="font-semibold text-gray-900">{alert.message}</p>
-                </div>
+                <p className="font-semibold text-gray-900">{alert.message}</p>
               </div>
             ))}
           </div>
         )}
 
-        {/* SENSOR CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
-          <SensorCard title="Temperature" value={temperature} unit="°C" icon={Thermometer} color="bg-red-500" />
-          <SensorCard title="Vibration" value={vibration} unit="mm/s" icon={Waves} color="bg-purple-500" />
-          <SensorCard title="Current" value={current} unit="A" icon={Zap} color="bg-yellow-500" />
-          <SensorCard title="Voltage" value={voltage} unit="V" icon={Power} color="bg-blue-500" />
-          <SensorCard title="RPM" value={rpm} unit="RPM" icon={Gauge} color="bg-green-500" />
-        </div>
-
-        {/* CHARTS */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Temperature Trend */}
-          <div className="bg-white p-6 rounded-xl border shadow-sm">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <Thermometer className="w-5 h-5 text-red-500" /> Temperature Trend
-            </h3>
-
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={tempHistory}>
-                <defs>
-                  <linearGradient id="tempGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ff4444" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#ff4444" stopOpacity={0.1} />
-                  </linearGradient>
-                </defs>
-
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="time" tick={{ fill: "#6b7280" }} />
-                <YAxis tick={{ fill: "#6b7280" }} />
-                <Tooltip contentStyle={{ backgroundColor: "#fff", borderRadius: "8px", border: "1px solid #ddd" }} />
-
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#ff4444"
-                  strokeWidth={2.5}
-                  fill="url(#tempGradient)"
-                  isAnimationActive={true}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+        {/* DYNAMIC SENSOR GRID */}
+        {Object.keys(sensorData).length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+            <div className="bg-gray-50 p-4 rounded-full inline-block mb-3">
+              <Activity className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-500 font-medium">Waiting for sensor data...</p>
+            <p className="text-sm text-gray-400 mt-1">Verify your ESP32 is connected to WiFi</p>
           </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+              {Object.entries(sensorData).map(([key, value]) => (
+                <SensorCard key={key} dataKey={key} value={value} />
+              ))}
+            </div>
 
-          {/* Current Trend */}
-          <div className="bg-white p-6 rounded-xl border shadow-sm">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-yellow-500" /> Current Trend
-            </h3>
-
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={currentHistory}>
-                <defs>
-                  <linearGradient id="currentGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#fbbf24" stopOpacity={0.1} />
-                  </linearGradient>
-                </defs>
-
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="time" tick={{ fill: "#6b7280" }} />
-                <YAxis tick={{ fill: "#6b7280" }} />
-                <Tooltip contentStyle={{ backgroundColor: "#fff", borderRadius: "8px", border: "1px solid #ddd" }} />
-
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#fbbf24"
-                  strokeWidth={2.5}
-                  fill="url(#currentGradient)"
-                  isAnimationActive={true}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+            {/* DYNAMIC CHARTS */}
+            <div className="mb-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-gray-500" />
+                Live Trends
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {sensorKeys.length === 0 ? (
+                  <p className="text-gray-400 col-span-2 italic">No numeric data available for charting.</p>
+                ) : (
+                  sensorKeys.map(key => {
+                    const meta = SENSOR_METADATA[key] || { ...DEFAULT_META, label: key };
+                    return (
+                      <div key={key} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                        <h3 className="text-sm font-bold text-gray-500 mb-4 flex items-center gap-2 uppercase tracking-wider">
+                          <div className={`w-2 h-2 rounded-full ${meta.color}`}></div>
+                          {meta.label} Trend
+                        </h3>
+                        <ResponsiveContainer width="100%" height={250}>
+                          <AreaChart data={history}>
+                            <defs>
+                              <linearGradient id={`grad-${key}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={meta.stroke} stopOpacity={0.3} />
+                                <stop offset="95%" stopColor={meta.stroke} stopOpacity={0.0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                            <XAxis
+                              dataKey="time"
+                              tick={{ fill: "#9ca3af", fontSize: 10 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tick={{ fill: "#9ca3af", fontSize: 10 }}
+                              axisLine={false}
+                              tickLine={false}
+                              domain={['auto', 'auto']}
+                            />
+                            <Tooltip
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              labelStyle={{ color: '#6b7280', fontSize: '10px' }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey={key}
+                              stroke={meta.stroke}
+                              strokeWidth={2}
+                              fill={`url(#grad-${key})`}
+                              animationDuration={500}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* MACHINE INFO */}
-        <div className="bg-white p-6 rounded-xl border shadow-sm mt-8">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <HardDrive className="w-5 h-5 text-blue-500" /> Machine Information
-          </h3>
-
-          <div className="grid sm:grid-cols-2 gap-4 text-gray-800">
-            <div><strong>ID:</strong> {selectedMachine}</div>
-            <div><strong>Status:</strong> {machineStatus.toUpperCase()}</div>
-            <div><strong>Efficiency:</strong> 94%</div>
-            <div><strong>Power:</strong> 3.34 kW</div>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mt-8 flex flex-col sm:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-50 p-3 rounded-xl">
+              <HardDrive className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900">Machine Details</h4>
+              <p className="text-sm text-gray-500">ID: {selectedMachine}</p>
+            </div>
           </div>
+
+          <button
+            onClick={() => navigate("/details")}
+            className="px-6 py-2.5 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors shadow-lg shadow-gray-200"
+          >
+            View Full Config
+          </button>
         </div>
       </div>
     </div>
   );
 }
+
+const StatusBadge = ({ status }) => {
+  const isHealthy = status === 'running';
+  return (
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${isHealthy ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"}`}>
+      {isHealthy ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+      <span className="font-semibold text-xs uppercase tracking-wide">{isHealthy ? "Healthy" : "Attention"}</span>
+    </div>
+  );
+};

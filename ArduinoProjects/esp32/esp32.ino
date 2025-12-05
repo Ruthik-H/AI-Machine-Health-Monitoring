@@ -7,10 +7,10 @@
 // ----------------------
 // USER CONFIG
 // ----------------------
-#define WIFI_SSID "YOUR HOTSPOT NAME "
-#define WIFI_PASSWORD "YOUR PASSWORD"
+#define WIFI_SSID "Ruthik "
+#define WIFI_PASSWORD "12345678"
 
-#define DEVICE_ID "MACHINE-SXBQHKNJ"
+#define DEVICE_ID "MACHINE-33FZTIH1"  // Match the dashboard ID
 
 #define API_KEY "YOUR API KEY"
 #define DATABASE_URL "URL"
@@ -257,12 +257,12 @@ void sendSensorValues() {
   }
 
   // -----------------------
-  // RANDOM FAKE SENSOR VALUES (for sensors you don't have)
+  // SET OTHER SENSORS TO ZERO (you don't have these sensors yet)
   // -----------------------
-  float vibration = random(10, 100) / 100.0; // 0.10 - 0.99
-  float current = random(10, 30); // 10 - 29 A (example)
-  float voltage = random(210, 230);
-  int rpm = random(1400, 1600);
+  float vibration = 0.0;  // Set to 0 (no vibration sensor)
+  float current = 0.0;    // Set to 0 (no current sensor)
+  float voltage = 0.0;    // Set to 0 (no voltage sensor)
+  int rpm = 0;            // Set to 0 (no RPM sensor)
 
   Serial.print("Temp: ");
   Serial.println(temperature);

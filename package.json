@@ -1,0 +1,29 @@
+{
+  "name": "ai-clean",
+  "version": "1.0.0",
+  "description": "This project consists of three parts: 1.  **Frontend**: The React dashboard. 2.  **Backend**: The Node.js server that updates the database. 3.  **ML Service**: The Python service that predicts machine health.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install:all": "npm install && cd frontend && npm install && cd .. && cd backend && npm install",
+    "start:backend": "node backend/backend.mjs",
+    "start:frontend": "cd frontend && npm start",
+    "start:ml": "cd ml_service && python app.py",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:ml\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ruthik-H/AI-Machine-Health-Monitoring.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Ruthik-H/AI-Machine-Health-Monitoring/issues"
+  },
+  "homepage": "https://github.com/Ruthik-H/AI-Machine-Health-Monitoring#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

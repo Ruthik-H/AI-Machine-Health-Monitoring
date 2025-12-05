@@ -4,12 +4,12 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database"; // Needed for live sensor data
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyDpFXjNixlR2lkIFnc-hPzopNPri_DkVkg",
   authDomain: "ai-machine-health-intelligence.firebaseapp.com",
   databaseURL: "https://ai-machine-health-intelligence-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "ai-machine-health-intelligence",
-  storageBucket: "ai-machine-health-intelligence.appspot.com",  
+  storageBucket: "ai-machine-health-intelligence.appspot.com",
   messagingSenderId: "1051623327093",
   appId: "1:1051623327093:web:552d9f1e521a3c9e62bf3c",
   measurementId: "G-YSFBH6C5Y6"
