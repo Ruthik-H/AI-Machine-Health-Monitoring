@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { firebaseConfig } from '../firebaseClient';
-import { Copy, Download, Wifi, Eye, EyeOff, Code, CheckCircle, Zap, Shield, AlertTriangle } from 'lucide-react';
+import { Copy, Download, Wifi, Eye, EyeOff, Code, CheckCircle, Zap, Shield, AlertTriangle, Key, Database } from 'lucide-react';
 import { SENSOR_DEFINITIONS } from '../data/sensors';
 
 export default function ArduinoCodeGenerator({ deviceId, sensors }) {
@@ -8,8 +7,11 @@ export default function ArduinoCodeGenerator({ deviceId, sensors }) {
   const config = sensors || {};
 
   const [activeTab, setActiveTab] = useState('code'); // 'code', 'wiring', 'security'
+  const [isSimulationMode, setIsSimulationMode] = useState(false);
   const [ssid, setSsid] = useState('');
   const [password, setPassword] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [dbUrl, setDbUrl] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [generatedCode, setGeneratedCode] = useState('');
   const [copied, setCopied] = useState(false);
@@ -22,43 +24,92 @@ export default function ArduinoCodeGenerator({ deviceId, sensors }) {
   useEffect(() => {
     generateCode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ssid, password, deviceId, config]);
+  }, [ssid, password, apiKey, dbUrl, deviceId, config, isSimulationMode]);
 
   const generateCode = () => {
     // 1. Collect all code parts
     const parts = {
-      includes: new Set(["#include <WiFi.h>", "#include <FirebaseESP32.h>", "#include <time.h>"]),
-      defines: new Set([`#define WIFI_SSID "${ssid || 'YOUR_WIFI_SSID'}"`, `#define WIFI_PASSWORD "${password || 'YOUR_WIFI_PASSWORD'}"`, `#define DEVICE_ID "${deviceId}"`, `#define API_KEY "${firebaseConfig.apiKey}"`, `#define DATABASE_URL "${firebaseConfig.databaseURL}"`]),
+      includes: new Set([
+        "#include <WiFi.h>",
+        "#include <Firebase_ESP_Client.h>", // NEW Library
+        "#include \"addons/TokenHelper.h\"",
+        "#include \"addons/RTDBHelper.h\"",
+        "#include <time.h>"
+      ]),
+      defines: [],
       setup: [],
       read: [],
       vars: [],
       send: []
     };
 
+    // 2. Add Config Defines
+    parts.defines.push('#define WIFI_SSID "' + (ssid || 'YOUR_WIFI_SSID') + '"');
+    parts.defines.push('#define WIFI_PASSWORD "' + (password || 'YOUR_WIFI_PASSWORD') + '"');
+    parts.defines.push('#define API_KEY "' + (apiKey || 'YOUR_FIREBASE_API_KEY') + '"');
+    parts.defines.push('#define DATABASE_URL "' + (dbUrl || 'YOUR_FIREBASE_DATABASE_URL') + '"');
+    parts.defines.push('#define DEVICE_ID "' + deviceId + '"');
+
+    // 3. Process Sensors
     activeSensors.forEach(s => {
       if (s.code.include) s.code.include.split('\n').forEach(l => parts.includes.add(l.trim()));
-      if (s.code.define) s.code.define.split('\n').forEach(l => parts.defines.add(l.trim()));
-      if (s.code.setup) parts.setup.push(`  // ${s.label}\n  ${s.code.setup}`);
-      if (s.code.vars) parts.vars.push(s.code.vars);
-      if (s.code.read) parts.read.push(`  // ${s.label}\n  ${s.code.read}`);
-      if (s.code.send) parts.send.push(`  ${s.code.send}`);
+      if (s.code.define) s.code.define.split('\n').forEach(l => parts.defines.push(l.trim()));
+
+      // SETUP: Only if NOT simulation
+      if (!isSimulationMode) {
+        if (s.code.setup) parts.setup.push(`  // ${s.label}\n  ${s.code.setup}`);
+      }
+
+      // VARS: Deduplicate
+      if (s.code.vars) {
+        const varLines = s.code.vars.split('\n');
+        varLines.forEach(line => {
+          if (!parts.vars.includes(line.trim())) {
+            parts.vars.push(line.trim());
+          }
+        });
+      }
+
+      // READ: Simulation vs Real
+      if (isSimulationMode) {
+        const mockLogic = s.code.mock || `// No mock logic for ${s.id}`;
+        // Clean assignments (remove types)
+        const cleanMock = mockLogic.replace(/(float|int|long|bool|char\*)\s+(\w+)\s*=/g, '$2 =');
+        parts.read.push(`    // ${s.label} (SIMULATION)\n    ${cleanMock}`);
+      } else {
+        if (s.code.read) {
+          const cleanRead = s.code.read.replace(/(float|int|long|bool|char\*)\s+(\w+)\s*=/g, '$2 =');
+          parts.read.push(`    // ${s.label}\n    ${cleanRead}`);
+        }
+      }
+
+      // SEND: Use Firebase RTDB syntax
+      if (s.code.send) {
+        // We need to convert old syntax "Firebase.setFloat(fbdo, ...)" to "Firebase.RTDB.setFloat(&fbdo, ...)"
+        // Or just map the variable names directly since we are templating.
+        // Actually, the user asked for SPECIFIC syntax like: Firebase.RTDB.setFloat(&fbdo, sensorsPath("temperature").c_str(), temperature);
+        // The s.code.send in sensors.js is "Firebase.setFloat(...)".
+        // Use a simple replacement to upgrade the syntax:
+        let upgradedSend = s.code.send.replace(/Firebase\.set/g, 'Firebase.RTDB.set');
+        upgradedSend = upgradedSend.replace(/\(fbdo/g, '(&fbdo'); // pass address
+        parts.send.push(`      // ${s.label}\n      ${upgradedSend}`);
+      }
     });
 
-    const code = `// File: esp32_main.ino
+    const code = `// File: esp32_firmware_direct.ino
 ${Array.from(parts.includes).join('\n')}
 
 // ----------------------
 // USER CONFIG
 // ----------------------
-${Array.from(parts.defines).join('\n')}
+${parts.defines.join('\n')}
 #define RELAY_PIN 5 
 
-// ----------------------
-// Firebase & Time
-// ----------------------
+// Firebase Objects
 FirebaseData fbdo;
 FirebaseAuth auth;
-FirebaseConfig conf;
+FirebaseConfig config;
+bool signupOK = false;
 
 const char* ntp1 = "pool.ntp.org";
 const char* ntp2 = "time.nist.gov";
@@ -71,9 +122,9 @@ const unsigned long SEND_INTERVAL = 2000; // 2 sec
 // Global Sensor Variables
 ${parts.vars.join('\n')}
 
-// Helper for paths
-String sensorsPath(const char *sensorName) {
-  return "/devices/" + String(DEVICE_ID) + "/sensors/" + String(sensorName);
+// Helper to build path: /devices/{ID}/sensors/{SENSOR}
+String sensorsPath(String sensorName) {
+  return String("/devices/") + DEVICE_ID + "/sensors/" + sensorName;
 }
 
 void connectWiFi() {
@@ -84,43 +135,45 @@ void connectWiFi() {
   Serial.println("\\nConnected! IP: "); Serial.println(WiFi.localIP());
 }
 
-void firebaseSetup() {
-  conf.api_key = API_KEY;
-  conf.database_url = DATABASE_URL;
-  Firebase.signUp(&conf, &auth, "", "");
-  Firebase.begin(&conf, &auth);
-  Firebase.reconnectWiFi(true);
-}
-
 void syncTime() {
   configTime(gmtOffset, daylightOffset, ntp1, ntp2);
   time_t now = time(nullptr);
   while (now < 1600000000) { delay(200); now = time(nullptr); }
 }
 
-String isoNow() {
-  time_t now = time(nullptr);
-  struct tm timeinfo;
-  gmtime_r(&now, &timeinfo);
-  char buf[32];
-  sprintf(buf, "%04d-%02d-%02dT%02d:%02d:%02dZ",
-    timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
-    timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-  return String(buf);
-}
-
 void setup() {
   Serial.begin(115200);
   delay(100);
-  Serial.println("\\n=== ESP32 Universal Firmware ===");
+  Serial.println("\\n=== ESP32 Firmware (Direct Mode) ===");
+  ${isSimulationMode ? 'Serial.println("WARNING: RUNNING IN SIMULATION MODE");' : ''}
 
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, LOW); // ON initially
 
   connectWiFi();
   syncTime();
-  firebaseSetup();
   randomSeed(analogRead(0));
+
+  // ---------------------------
+  // Firebase Setup
+  // ---------------------------
+  config.api_key = API_KEY;
+  config.database_url = DATABASE_URL;
+
+  // Show token generation info on Serial Monitor
+  config.token_status_callback = tokenStatusCallback;
+  config.max_token_generation_retry = 5;
+
+  // Anonymous sign-up (no email, no password)
+  if (Firebase.signUp(&config, &auth, "", "")) {
+    Serial.println("Firebase signup OK");
+    signupOK = true;
+  } else {
+    Serial.printf("Firebase signup FAILED: %s\\n", config.signer.signupError.message.c_str());
+  }
+
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
 
   // Sensor Setup
 ${parts.setup.join('\n')}
@@ -128,22 +181,39 @@ ${parts.setup.join('\n')}
 
 void loop() {
   if (WiFi.status() != WL_CONNECTED) connectWiFi();
-  if (!Firebase.ready()) Firebase.reconnectWiFi(true);
 
   unsigned long now = millis();
 
   if (now - lastSend >= SEND_INTERVAL) {
     lastSend = now;
     
-    // 1. Read Sensors
+    // ---------------------------
+    // 1. Read Sensors ${isSimulationMode ? '(SIMULATED)' : ''}
+    // ---------------------------
 ${parts.read.join('\n')}
 
-    // 2. Send to Firebase
+    // ---------------------------
+    // 2. Send to Firebase (Direct)
+    // ---------------------------
+    if (Firebase.ready() && signupOK) {
+      Serial.println("Sending data to Firebase...");
+      
+      String lastSeenPath = "/devices/" + String(DEVICE_ID) + "/meta/lastSeen";
+      String onlinePath   = "/devices/" + String(DEVICE_ID) + "/meta/online";
+
+      // Meta
+      if (!Firebase.RTDB.setInt(&fbdo, lastSeenPath.c_str(), time(nullptr))) {
+        Serial.print("lastSeen error: "); Serial.println(fbdo.errorReason());
+      }
+      if (!Firebase.RTDB.setBool(&fbdo, onlinePath.c_str(), true)) {
+        Serial.print("online error: "); Serial.println(fbdo.errorReason());
+      }
+
 ${parts.send.join('\n')}
-    
-    // Heartbeat
-    Firebase.setInt(fbdo, ("/devices/" + String(DEVICE_ID) + "/meta/lastSeen").c_str(), time(nullptr));
-    Firebase.setBool(fbdo, ("/devices/" + String(DEVICE_ID) + "/meta/online").c_str(), true);
+      
+    } else {
+      Serial.println("Firebase not ready (token not generated yet or signup failed)");
+    }
   }
 }
 `;
@@ -160,7 +230,7 @@ ${parts.send.join('\n')}
     const element = document.createElement("a");
     const file = new Blob([generatedCode], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
-    element.download = "esp32.ino";
+    element.download = "esp32_direct.ino";
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
@@ -207,11 +277,20 @@ ${parts.send.join('\n')}
           <div className="animate-fadeIn">
             <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
-                <Wifi className="w-4 h-4" /> WiFi Configuration
+                <Wifi className="w-4 h-4" /> WiFi & Firebase Configuration
               </h4>
-              <p className="text-sm text-blue-600 mb-4">
-                Enter your WiFi credentials below. They will be automatically inserted into the code.
-              </p>
+
+              {/* Simulation Mode Toggle */}
+              <div className="mb-6 flex items-center gap-3 p-3 bg-white border border-blue-200 rounded-lg shadow-sm">
+                <div className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors ${isSimulationMode ? 'bg-blue-600' : 'bg-gray-300'}`}
+                  onClick={() => setIsSimulationMode(!isSimulationMode)}>
+                  <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${isSimulationMode ? 'translate-x-4' : 'translate-x-0'}`} />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-gray-800">No sensors? Use Simulation Mode</div>
+                  <div className="text-xs text-gray-500">Generates random values so you can test the dashboard without hardware.</div>
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -221,7 +300,7 @@ ${parts.send.join('\n')}
                     value={ssid}
                     onChange={(e) => setSsid(e.target.value)}
                     placeholder="e.g., Home_WiFi"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all"
                   />
                 </div>
                 <div>
@@ -232,7 +311,7 @@ ${parts.send.join('\n')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter password"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-10"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all pr-10"
                     />
                     <button
                       type="button"
@@ -241,6 +320,33 @@ ${parts.send.join('\n')}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
+                  </div>
+                </div>
+                {/* RESTORED API KEY & DB URL */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Firebase API Key</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="AIzaSy..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all pl-9"
+                    />
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Database URL</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={dbUrl}
+                      onChange={(e) => setDbUrl(e.target.value)}
+                      placeholder="https://your-project.firebaseio.com"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all pl-9"
+                    />
+                    <Database className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   </div>
                 </div>
               </div>
@@ -264,10 +370,18 @@ ${parts.send.join('\n')}
                 </button>
               </div>
 
+              {/* PREVIEW OF CODE */}
               <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto max-h-[400px] overflow-y-auto custom-scrollbar">
                 <pre className="text-xs font-mono text-gray-300 leading-relaxed">
                   <code>{generatedCode}</code>
                 </pre>
+              </div>
+
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800 flex gap-2">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                <span>
+                  <strong>Direct Mode:</strong> Your API Key is embedded in this code. Do not share this file publicly.
+                </span>
               </div>
             </div>
 
@@ -336,32 +450,14 @@ ${parts.send.join('\n')}
         {/* TAB: SECURITY */}
         {activeTab === 'security' && (
           <div className="animate-fadeIn space-y-6">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <h4 className="font-bold text-green-800 flex items-center gap-2 mb-2">
-                <Shield className="w-5 h-5" /> Is this secure?
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="font-bold text-yellow-800 flex items-center gap-2 mb-2">
+                <Shield className="w-5 h-5" /> Direct Connection Mode
               </h4>
-              <p className="text-sm text-green-700 leading-relaxed">
-                Yes. While the API Key is visible in the code, <strong>it does not give full access to your database</strong>.
-                Security is handled by Firebase "Security Rules" on the server side, which restrict what this key can do.
+              <p className="text-sm text-yellow-700 leading-relaxed">
+                You are connecting directly to Firebase. This requires embedding your <strong>API Key</strong> in the firmware.
+                This is fine for personal projects, but not recommended for commercial products.
               </p>
-            </div>
-            {/* Same security content as before */}
-            <div className="space-y-4">
-              <h4 className="font-bold text-gray-900">How we protect your data:</h4>
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 font-bold">1</div>
-                <div>
-                  <h5 className="font-semibold text-gray-800">Public ID, Not a Password</h5>
-                  <p className="text-sm text-gray-600">The API Key identifies your project to Google. Like a house address.</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 font-bold">2</div>
-                <div>
-                  <h5 className="font-semibold text-gray-800">Server-Side Rules</h5>
-                  <p className="text-sm text-gray-600">We configure Firebase to only accept sensor data from authenticated devices.</p>
-                </div>
-              </div>
             </div>
           </div>
         )}

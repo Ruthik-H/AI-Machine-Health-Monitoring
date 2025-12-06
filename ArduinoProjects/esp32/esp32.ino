@@ -1,304 +1,200 @@
-// File: esp32_main.ino
+// File: esp32_firmware_direct.ino
 #include <WiFi.h>
-#include <FirebaseESP32.h>
+#include <Firebase_ESP_Client.h>
+#include "addons/TokenHelper.h"
+#include "addons/RTDBHelper.h"
 #include <time.h>
 #include <DHT.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
 
 // ----------------------
 // USER CONFIG
 // ----------------------
-#define WIFI_SSID "Ruthik "
+#define WIFI_SSID "RUTHIK"
 #define WIFI_PASSWORD "12345678"
-
-#define DEVICE_ID "MACHINE-33FZTIH1"  // Match the dashboard ID
-
-#define API_KEY "YOUR API KEY"
-#define DATABASE_URL "URL"
-
-// ----------------------
-// HARDWARE PINS
-// ----------------------
+#define API_KEY "AIzaSyDpFXjNixlR2lkIFnc-hPzopNPri_DkVkg"
+#define DATABASE_URL "https://ai-machine-health-intelligence-default-rtdb.asia-southeast1.firebasedatabase.app"
+#define DEVICE_ID "MACHINE-RFF33T15"
 #define DHTPIN 4
 #define DHTTYPE DHT11
+Adafruit_BME280 bme; // I2C
+#define MQ2_PIN 34
+#define TRIG_PIN 12
+#define ECHO_PIN 13
+#define CURRENT_PIN 36
+#define WATER_PIN 33
+HardwareSerial co2Serial(2); // Use UART2
+#define RPM_PIN 18
+volatile int rpmCount = 0;
+void IRAM_ATTR rpmISR() { rpmCount++; }
+#define VOLT_PIN 39
+#define SOIL_PIN 32
+#define RELAY_PIN 5 
 
-#define RELAY_PIN 5      // LOW = ON, HIGH = OFF for LOW trigger relay
-
-DHT dht(DHTPIN, DHTTYPE);
-
-// ----------------------
-// Firebase
-// ----------------------
+// Firebase Objects
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
+bool signupOK = false;
 
-// ----------------------
-// NTP Time
-// ----------------------
 const char* ntp1 = "pool.ntp.org";
 const char* ntp2 = "time.nist.gov";
 const long gmtOffset = 0;
 const int daylightOffset = 0;
 
-// ----------------------
-// UPDATE EVERY 1 SECOND
-// ----------------------
 unsigned long lastSend = 0;
-const unsigned long SEND_INTERVAL = 1000; // 1 sec
+const unsigned long SEND_INTERVAL = 2000; // 2 sec
 
-// ----------------------
-// FETCH LIMITS EVERY 5s
-// ----------------------
-unsigned long lastLimitFetch = 0;
-const unsigned long LIMIT_FETCH_INTERVAL = 5000; // 5 sec
+// Global Sensor Variables
+float temperature = 0.0;
+float humidity = 0.0;
+float pressure = 0.0;
+float gasLevel = 0.0;
+float distance = 0.0;
+float current = 0.0;
+float waterLevel = 0.0;
+int co2 = 0;
+int rpm = 0;
+float voltage = 0.0;
+float soilMoisture = 0.0;
 
-// ----------------------
-// Thresholds (defaults)
-float tempLimit = 40.0;
-float vibLimit = 1.8;
-float currentLimit = 20.0;
-float rpmLimit = 2000.0;
+// Helper to build path: /devices/{ID}/sensors/{SENSOR}
+String sensorsPath(String sensorName) {
+  return String("/devices/") + DEVICE_ID + "/sensors/" + sensorName;
+}
 
-// Forward declarations
-void connectWiFi();
-void firebaseSetup();
-void syncTime();
-String isoNow();
-void sendSensorValues();
-String sensorsPath(const char *sensorName);
-void fetchLimits();
+void connectWiFi() {
+  Serial.print("Connecting to: "); Serial.println(WIFI_SSID);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) { delay(300); Serial.print("."); }
+  Serial.println("\nConnected! IP: "); Serial.println(WiFi.localIP());
+}
+
+void syncTime() {
+  configTime(gmtOffset, daylightOffset, ntp1, ntp2);
+  time_t now = time(nullptr);
+  while (now < 1600000000) { delay(200); now = time(nullptr); }
+}
 
 void setup() {
   Serial.begin(115200);
-  delay(200);
-
-  Serial.println("\n=== ESP32 + DHT11 + Relay + Firebase ===");
+  delay(100);
+  Serial.println("\n=== ESP32 Firmware (Direct Mode) ===");
+  Serial.println("WARNING: RUNNING IN SIMULATION MODE");
 
   pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, LOW);   // RELAY ON initially
-
-  dht.begin();
+  digitalWrite(RELAY_PIN, LOW); // ON initially
 
   connectWiFi();
   syncTime();
-  firebaseSetup();
-
-  // random seed for fake/random values
   randomSeed(analogRead(0));
-}
 
-void loop() {
-
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi lost — reconnecting...");
-    connectWiFi();
-  }
-
-  if (!Firebase.ready()) {
-    Firebase.reconnectWiFi(true);
-  }
-
-  unsigned long nowMillis = millis();
-
-  if (nowMillis - lastLimitFetch >= LIMIT_FETCH_INTERVAL) {
-    lastLimitFetch = nowMillis;
-    fetchLimits();
-  }
-
-  if (nowMillis - lastSend >= SEND_INTERVAL) {
-    lastSend = nowMillis;
-    sendSensorValues();
-  }
-}
-
-// -------------------------------------------
-// CONNECT WIFI
-// -------------------------------------------
-void connectWiFi() {
-  Serial.print("Connecting to WiFi: ");
-  Serial.println(WIFI_SSID);
-
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(300);
-  }
-
-  Serial.println("\nWiFi Connected!");
-  Serial.print("IP: ");
-  Serial.println(WiFi.localIP());
-}
-
-// -------------------------------------------
-// FIREBASE SETUP
-// -------------------------------------------
-void firebaseSetup() {
+  // ---------------------------
+  // Firebase Setup
+  // ---------------------------
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
 
-  Serial.println("Signing in...");
+  // Show token generation info on Serial Monitor
+  config.token_status_callback = tokenStatusCallback;
+  config.max_token_generation_retry = 5;
+
+  // Anonymous sign-up (no email, no password)
   if (Firebase.signUp(&config, &auth, "", "")) {
-    Serial.println("Firebase SignUp OK");
+    Serial.println("Firebase signup OK");
+    signupOK = true;
   } else {
-    Serial.printf("SignUp error: %s\n", config.signer.signupError.message.c_str());
+    Serial.printf("Firebase signup FAILED: %s\n", config.signer.signupError.message.c_str());
   }
 
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
 
-  Serial.println("Firebase initialized.");
+  // Sensor Setup
+
 }
 
-// -------------------------------------------
-// SYNC TIME (NTP)
-// -------------------------------------------
-void syncTime() {
-  Serial.println("Syncing time...");
-  configTime(gmtOffset, daylightOffset, ntp1, ntp2);
+void loop() {
+  if (WiFi.status() != WL_CONNECTED) connectWiFi();
 
-  time_t now = time(nullptr);
-  while (now < 1600000000) {
-    delay(200);
-    now = time(nullptr);
+  unsigned long now = millis();
+
+  if (now - lastSend >= SEND_INTERVAL) {
+    lastSend = now;
+    
+    // ---------------------------
+    // 1. Read Sensors (SIMULATED)
+    // ---------------------------
+    // DHT11 Temp & Humidity (SIMULATION)
+    temperature = random(20, 35) + random(0, 100) / 100.0;
+  humidity = random(40, 80) + random(0, 100) / 100.0;
+    // BME280 Temp/Hum/Pressure (SIMULATION)
+    temperature = random(15, 30) + random(0, 100) / 100.0;
+  humidity = random(30, 70) + random(0, 100) / 100.0;
+  pressure = random(900, 1100) + random(0, 100) / 100.0;
+    // MQ-2 Smoke/LPG/CO (SIMULATION)
+    gasLevel = random(10, 100) + random(0, 100) / 100.0;
+    // HC-SR04 Ultrasonic (SIMULATION)
+    distance = random(5, 400) + random(0, 100) / 100.0;
+    // ACS712 Current (20A) (SIMULATION)
+    current = random(0, 1000) / 100.0;
+    // Water Level Depth (SIMULATION)
+    waterLevel = random(0, 100);
+    // MH-Z19 CO2 Sensor (SIMULATION)
+    co2 = random(400, 1000);
+    // IR Speed / Tachometer (SIMULATION)
+    rpm = random(0, 3000);
+    // ZMPT101B Voltage (SIMULATION)
+    voltage = random(220, 240) + random(0, 100) / 100.0;
+    // Soil Moisture Sensor (SIMULATION)
+    soilMoisture = random(0, 100);
+
+    // ---------------------------
+    // 2. Send to Firebase (Direct)
+    // ---------------------------
+    if (Firebase.ready() && signupOK) {
+      Serial.println("Sending data to Firebase...");
+      
+      String lastSeenPath = "/devices/" + String(DEVICE_ID) + "/meta/lastSeen";
+      String onlinePath   = "/devices/" + String(DEVICE_ID) + "/meta/online";
+
+      // Meta
+      if (!Firebase.RTDB.setInt(&fbdo, lastSeenPath.c_str(), time(nullptr))) {
+        Serial.print("lastSeen error: "); Serial.println(fbdo.errorReason());
+      }
+      if (!Firebase.RTDB.setBool(&fbdo, onlinePath.c_str(), true)) {
+        Serial.print("online error: "); Serial.println(fbdo.errorReason());
+      }
+
+      // DHT11 Temp & Humidity
+      Firebase.RTDB.setFloat(&fbdo, sensorsPath("temperature").c_str(), temperature);
+  Firebase.RTDB.setFloat(&fbdo, sensorsPath("humidity").c_str(), humidity);
+      // BME280 Temp/Hum/Pressure
+      Firebase.RTDB.setFloat(&fbdo, sensorsPath("temperature").c_str(), temperature);
+  Firebase.RTDB.setFloat(&fbdo, sensorsPath("humidity").c_str(), humidity);
+  Firebase.RTDB.setFloat(&fbdo, sensorsPath("pressure").c_str(), pressure);
+      // MQ-2 Smoke/LPG/CO
+      Firebase.RTDB.setFloat(&fbdo, sensorsPath("gasLevel").c_str(), gasLevel);
+      // HC-SR04 Ultrasonic
+      Firebase.RTDB.setFloat(&fbdo, sensorsPath("distance").c_str(), distance);
+      // ACS712 Current (20A)
+      Firebase.RTDB.setFloat(&fbdo, sensorsPath("current").c_str(), current);
+      // Water Level Depth
+      Firebase.RTDB.setFloat(&fbdo, sensorsPath("waterLevel").c_str(), waterLevel);
+      // MH-Z19 CO2 Sensor
+      Firebase.RTDB.setInt(&fbdo, sensorsPath("co2").c_str(), co2);
+      // IR Speed / Tachometer
+      Firebase.RTDB.setInt(&fbdo, sensorsPath("rpm").c_str(), rpm);
+      // ZMPT101B Voltage
+      Firebase.RTDB.setFloat(&fbdo, sensorsPath("voltage").c_str(), voltage);
+      // Soil Moisture Sensor
+      Firebase.RTDB.setFloat(&fbdo, sensorsPath("soilMoisture").c_str(), soilMoisture);
+      
+    } else {
+      Serial.println("Firebase not ready (token not generated yet or signup failed)");
+    }
   }
-  Serial.println("Time synced.");
-}
-
-// -------------------------------------------
-// ISO TIMESTAMP
-// -------------------------------------------
-String isoNow() {
-  time_t now = time(nullptr);
-  struct tm timeinfo;
-  gmtime_r(&now, &timeinfo);
-
-  char buf[32];
-  sprintf(
-    buf,
-    "%04d-%02d-%02dT%02d:%02d:%02dZ",
-    timeinfo.tm_year + 1900,
-    timeinfo.tm_mon + 1,
-    timeinfo.tm_mday,
-    timeinfo.tm_hour,
-    timeinfo.tm_min,
-    timeinfo.tm_sec
-  );
-  return String(buf);
-}
-
-// -------------------------------------------
-// PATH BUILDER
-// -------------------------------------------
-String sensorsPath(const char *sensorName) {
-  return "/devices/" + String(DEVICE_ID) + "/sensors/" + String(sensorName);
-}
-
-// -------------------------------------------
-// FETCH LIMITS FROM Firebase
-// -------------------------------------------
-void fetchLimits() {
-  if (!Firebase.ready()) return;
-
-  String base = "/devices/" + String(DEVICE_ID) + "/config/thresholds";
-
-  // temperature
-  String tPath = base + "/temperature";
-  if (Firebase.getFloat(fbdo, tPath.c_str())) {
-    tempLimit = fbdo.floatData();
-    Serial.printf("Fetched tempLimit: %.2f\n", tempLimit);
-  } else {
-    Serial.printf("No tempLimit or fetch error: %s\n", fbdo.errorReason().c_str());
-  }
-
-  // vibration
-  String vPath = base + "/vibration";
-  if (Firebase.getFloat(fbdo, vPath.c_str())) {
-    vibLimit = fbdo.floatData();
-    Serial.printf("Fetched vibLimit: %.2f\n", vibLimit);
-  } else {
-    Serial.printf("No vibLimit or fetch error: %s\n", fbdo.errorReason().c_str());
-  }
-
-  // current
-  String cPath = base + "/current";
-  if (Firebase.getFloat(fbdo, cPath.c_str())) {
-    currentLimit = fbdo.floatData();
-    Serial.printf("Fetched currentLimit: %.2f\n", currentLimit);
-  } else {
-    Serial.printf("No currentLimit or fetch error: %s\n", fbdo.errorReason().c_str());
-  }
-
-  // rpm
-  String rPath = base + "/rpm";
-  if (Firebase.getFloat(fbdo, rPath.c_str())) {
-    rpmLimit = fbdo.floatData();
-    Serial.printf("Fetched rpmLimit: %.0f\n", rpmLimit);
-  } else {
-    Serial.printf("No rpmLimit or fetch error: %s\n", fbdo.errorReason().c_str());
-  }
-}
-
-// -------------------------------------------
-// MAIN FUNCTION — READ DHT & SEND
-// -------------------------------------------
-void sendSensorValues() {
-  if (!Firebase.ready()) return;
-
-  // -----------------------
-  // READ REAL TEMPERATURE
-  // -----------------------
-  float temperature = dht.readTemperature();
-
-  if (isnan(temperature)) {
-    Serial.println("⚠️ DHT11 Read Error!");
-    return;
-  }
-
-  // -----------------------
-  // SET OTHER SENSORS TO ZERO (you don't have these sensors yet)
-  // -----------------------
-  float vibration = 0.0;  // Set to 0 (no vibration sensor)
-  float current = 0.0;    // Set to 0 (no current sensor)
-  float voltage = 0.0;    // Set to 0 (no voltage sensor)
-  int rpm = 0;            // Set to 0 (no RPM sensor)
-
-  Serial.print("Temp: ");
-  Serial.println(temperature);
-
-  // -----------------------
-  // RELAY AUTO SHUTDOWN based on dynamic limit
-  // -----------------------
-  if (temperature > tempLimit) {
-    digitalWrite(RELAY_PIN, HIGH);  // RELAY OFF
-    Serial.println("🔥 TEMP HIGH → RELAY OFF");
-  } else {
-    digitalWrite(RELAY_PIN, LOW);   // RELAY ON
-    Serial.println("OK → Relay ON");
-  }
-
-  // -----------------------
-  // SEND TO FIREBASE
-  // -----------------------
-  Firebase.setFloat(fbdo, sensorsPath("temperature").c_str(), temperature);
-  Firebase.setFloat(fbdo, sensorsPath("vibration").c_str(), vibration);
-  Firebase.setFloat(fbdo, sensorsPath("current").c_str(), current);
-  Firebase.setFloat(fbdo, sensorsPath("voltage").c_str(), voltage);
-  Firebase.setInt(fbdo, sensorsPath("rpm").c_str(), rpm);
-
-  Firebase.setInt(fbdo, ("/devices/" + String(DEVICE_ID) + "/meta/lastSeen").c_str(), time(nullptr));
-  Firebase.setBool(fbdo, ("/devices/" + String(DEVICE_ID) + "/meta/online").c_str(), true);
-
-  String timestamp = isoNow();
-  String base = "/history/" + String(DEVICE_ID) + "/" + timestamp;
-
-  Firebase.setFloat(fbdo, (base + "/temperature").c_str(), temperature);
-  Firebase.setFloat(fbdo, (base + "/vibration").c_str(), vibration);
-  Firebase.setFloat(fbdo, (base + "/current").c_str(), current);
-  Firebase.setFloat(fbdo, (base + "/voltage").c_str(), voltage);
-  Firebase.setInt(fbdo,   (base + "/rpm").c_str(), rpm);
-
-  Serial.println("History saved → " + timestamp);
-  Serial.println("-----------------------------");
 }

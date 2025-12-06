@@ -90,29 +90,38 @@ export default function Dashboard() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (cur) => {
       setUser(cur || null);
-      setLoading(false);
+      if (!cur) {
+        setLoading(false);
+        // Note: Don't navigate here, let rendering handle it or user might see flash
+      }
     });
     return () => unsub();
   }, []);
 
   // ---------------------------------------------------
-  // LOAD DEVICE LIST
+  // LOAD DEVICE LIST (USER SPECIFIC)
   // ---------------------------------------------------
   useEffect(() => {
-    const deviceRef = ref(db, "devices");
+    if (!user) return;
+
+    // CHANGED: Load from users/{uid}/machines instead of global devices
+    const deviceRef = ref(db, `users/${user.uid}/machines`);
+
     const unsub = onValue(deviceRef, (snapshot) => {
       const data = snapshot.val() || {};
       const list = Object.keys(data).map((id) => ({
         deviceId: id,
-        machineName: data[id]?.meta?.machineName || id,
+        machineName: data[id]?.machineName || id, // Structure in 'users' path is flat
       }));
       setMachines(list);
+      setLoading(false); // Done loading list
+
       if (!selectedMachine && list.length > 0) {
         setSelectedMachine(list[0].deviceId);
       }
     });
     return () => unsub();
-  }, [selectedMachine]);
+  }, [user, selectedMachine]);
 
   // ---------------------------------------------------
   // LOAD THRESHOLDS
@@ -308,7 +317,7 @@ export default function Dashboard() {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
             <p className="text-gray-500 text-sm mt-1">
-              Monitoring <span className="font-semibold text-indigo-600">{selectedMachine}</span>
+              Monitoring <span className="font-semibold text-indigo-600">{selectedMachine || 'No Machine Selected'}</span>
             </p>
           </div>
           <div className="w-full md:w-64">
@@ -345,13 +354,13 @@ export default function Dashboard() {
         )}
 
         {/* DYNAMIC SENSOR GRID */}
-        {Object.keys(sensorData).length === 0 ? (
+        {!selectedMachine || Object.keys(sensorData).length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
             <div className="bg-gray-50 p-4 rounded-full inline-block mb-3">
               <Activity className="w-8 h-8 text-gray-400" />
             </div>
-            <p className="text-gray-500 font-medium">Waiting for sensor data...</p>
-            <p className="text-sm text-gray-400 mt-1">Verify your ESP32 is connected to WiFi</p>
+            <p className="text-gray-500 font-medium">{selectedMachine ? "Waiting for sensor data..." : "No machines found. Add one!"}</p>
+            <p className="text-sm text-gray-400 mt-1">{selectedMachine ? "Verify your ESP32 is connected to WiFi" : "Click 'Add Machine' to get started"}</p>
           </div>
         ) : (
           <>
@@ -383,8 +392,8 @@ export default function Dashboard() {
                           <AreaChart data={history}>
                             <defs>
                               <linearGradient id={`grad-${key}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={meta.stroke} stopOpacity={0.3} />
-                                <stop offset="95%" stopColor={meta.stroke} stopOpacity={0.0} />
+                                <stop offset="5%" stopColor={meta.stroke} stopOpacity={0.8} /> {/* INCREASED BRIGHTNESS/OPACITY */}
+                                <stop offset="95%" stopColor={meta.stroke} stopOpacity={0.2} /> {/* INCREASED BRIGHTNESS/OPACITY */}
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
@@ -431,13 +440,14 @@ export default function Dashboard() {
             </div>
             <div>
               <h4 className="font-bold text-gray-900">Machine Details</h4>
-              <p className="text-sm text-gray-500">ID: {selectedMachine}</p>
+              <p className="text-sm text-gray-500">ID: {selectedMachine || "N/A"}</p>
             </div>
           </div>
 
           <button
             onClick={() => navigate("/details")}
-            className="px-6 py-2.5 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors shadow-lg shadow-gray-200"
+            disabled={!selectedMachine}
+            className="px-6 py-2.5 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors shadow-lg shadow-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             View Full Config
           </button>

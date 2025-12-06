@@ -13,7 +13,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "dht.begin();",
             read: "float temperature = dht.readTemperature();\n  float humidity = dht.readHumidity();",
             vars: "float temperature = 0.0;\nfloat humidity = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"temperature\").c_str(), temperature);\n  Firebase.setFloat(fbdo, sensorsPath(\"humidity\").c_str(), humidity);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"temperature\").c_str(), temperature);\n  Firebase.setFloat(fbdo, sensorsPath(\"humidity\").c_str(), humidity);",
+            mock: "float temperature = random(20, 35) + random(0, 100) / 100.0;\n  float humidity = random(40, 80) + random(0, 100) / 100.0;",
+            json: "doc[\"temperature\"] = temperature;\n  doc[\"humidity\"] = humidity;"
         },
         wiring: [
             { pin: "VCC", esp: "3.3V" },
@@ -32,7 +34,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "dht.begin();",
             read: "float temperature = dht.readTemperature();\n  float humidity = dht.readHumidity();",
             vars: "float temperature = 0.0;\nfloat humidity = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"temperature\").c_str(), temperature);\n  Firebase.setFloat(fbdo, sensorsPath(\"humidity\").c_str(), humidity);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"temperature\").c_str(), temperature);\n  Firebase.setFloat(fbdo, sensorsPath(\"humidity\").c_str(), humidity);",
+            mock: "float temperature = random(20, 35) + random(0, 100) / 100.0;\n  float humidity = random(40, 80) + random(0, 100) / 100.0;",
+            json: "doc[\"temperature\"] = temperature;\n  doc[\"humidity\"] = humidity;"
         },
         wiring: [
             { pin: "VCC", esp: "3.3V" },
@@ -51,7 +55,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "sensors.begin();",
             read: "sensors.requestTemperatures();\n  float temperature = sensors.getTempCByIndex(0);",
             vars: "float temperature = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"temperature\").c_str(), temperature);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"temperature\").c_str(), temperature);",
+            mock: "float temperature = random(20, 80) + random(0, 100) / 100.0;",
+            json: "doc[\"temperature\"] = temperature;"
         },
         wiring: [
             { pin: "VCC", esp: "3.3V/5V" },
@@ -70,7 +76,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "if (!bme.begin(0x76)) { Serial.println(\"BME280 Fail\"); }",
             read: "float temperature = bme.readTemperature();\n  float humidity = bme.readHumidity();\n  float pressure = bme.readPressure() / 100.0F;",
             vars: "float temperature = 0.0;\nfloat humidity = 0.0;\nfloat pressure = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"temperature\").c_str(), temperature);\n  Firebase.setFloat(fbdo, sensorsPath(\"humidity\").c_str(), humidity);\n  Firebase.setFloat(fbdo, sensorsPath(\"pressure\").c_str(), pressure);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"temperature\").c_str(), temperature);\n  Firebase.setFloat(fbdo, sensorsPath(\"humidity\").c_str(), humidity);\n  Firebase.setFloat(fbdo, sensorsPath(\"pressure\").c_str(), pressure);",
+            mock: "float temperature = random(15, 30) + random(0, 100) / 100.0;\n  float humidity = random(30, 70) + random(0, 100) / 100.0;\n  float pressure = random(900, 1100) + random(0, 100) / 100.0;",
+            json: "doc[\"temperature\"] = temperature;\n  doc[\"humidity\"] = humidity;\n  doc[\"pressure\"] = pressure;"
         },
         wiring: [
             { pin: "VCC", esp: "3.3V" },
@@ -90,7 +98,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(SOIL_PIN, INPUT);",
             read: "int soilRaw = analogRead(SOIL_PIN);\n  float soilMoisture = map(soilRaw, 4095, 0, 0, 100);",
             vars: "float soilMoisture = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"soilMoisture\").c_str(), soilMoisture);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"soilMoisture\").c_str(), soilMoisture);",
+            mock: "float soilMoisture = random(0, 100);",
+            json: "doc[\"soilMoisture\"] = soilMoisture;"
         },
         wiring: [
             { pin: "VCC", esp: "3.3V/5V" },
@@ -113,7 +123,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(MQ2_PIN, INPUT);",
             read: "int mq2Raw = analogRead(MQ2_PIN);\n  float gasLevel = mq2Raw / 40.95;",
             vars: "float gasLevel = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"gasLevel\").c_str(), gasLevel);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"gasLevel\").c_str(), gasLevel);",
+            mock: "float gasLevel = random(10, 100) + random(0, 100) / 100.0;",
+            json: "doc[\"gasLevel\"] = gasLevel;"
         },
         wiring: [
             { pin: "VCC", esp: "5V" },
@@ -132,7 +144,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(MQ135_PIN, INPUT);",
             read: "int mq135Raw = analogRead(MQ135_PIN);\n  float airQuality = mq135Raw / 40.95;",
             vars: "float airQuality = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"airQuality\").c_str(), airQuality);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"airQuality\").c_str(), airQuality);",
+            mock: "float airQuality = random(20, 200) + random(0, 100) / 100.0;",
+            json: "doc[\"airQuality\"] = airQuality;"
         },
         wiring: [
             { pin: "VCC", esp: "5V" },
@@ -155,7 +169,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(TRIG_PIN, OUTPUT);\n  pinMode(ECHO_PIN, INPUT);",
             read: "digitalWrite(TRIG_PIN, LOW);\n  delayMicroseconds(2);\n  digitalWrite(TRIG_PIN, HIGH);\n  delayMicroseconds(10);\n  digitalWrite(TRIG_PIN, LOW);\n  long duration = pulseIn(ECHO_PIN, HIGH);\n  float distance = duration * 0.034 / 2;",
             vars: "float distance = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"distance\").c_str(), distance);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"distance\").c_str(), distance);",
+            mock: "float distance = random(5, 400) + random(0, 100) / 100.0;",
+            json: "doc[\"distance\"] = distance;"
         },
         wiring: [
             { pin: "VCC", esp: "5V" },
@@ -175,7 +191,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "if (!mpu.begin()) { Serial.println(\"MPU6050 Fail\"); }\n  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);\n  mpu.setGyroRange(MPU6050_RANGE_500_DEG);",
             read: "sensors_event_t a, g, temp;\n  mpu.getEvent(&a, &g, &temp);\n  float accX = a.acceleration.x;\n  float accY = a.acceleration.y;\n  float accZ = a.acceleration.z;",
             vars: "float accX = 0.0; float accY = 0.0; float accZ = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"accX\").c_str(), accX);\n  Firebase.setFloat(fbdo, sensorsPath(\"accY\").c_str(), accY);\n  Firebase.setFloat(fbdo, sensorsPath(\"accZ\").c_str(), accZ);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"accX\").c_str(), accX);\n  Firebase.setFloat(fbdo, sensorsPath(\"accY\").c_str(), accY);\n  Firebase.setFloat(fbdo, sensorsPath(\"accZ\").c_str(), accZ);",
+            mock: "float accX = random(-10, 10) / 10.0;\n  float accY = random(-10, 10) / 10.0;\n  float accZ = random(8, 12) / 10.0;",
+            json: "doc[\"accX\"] = accX;\n  doc[\"accY\"] = accY;\n  doc[\"accZ\"] = accZ;"
         },
         wiring: [
             { pin: "VCC", esp: "3.3V" },
@@ -195,7 +213,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(PIR_PIN, INPUT);",
             read: "int motion = digitalRead(PIR_PIN);",
             vars: "int motion = 0;",
-            send: "Firebase.setInt(fbdo, sensorsPath(\"motion\").c_str(), motion);"
+            send: "Firebase.setInt(fbdo, sensorsPath(\"motion\").c_str(), motion);",
+            mock: "int motion = random(0, 2);",
+            json: "doc[\"motion\"] = motion;" // 0 or 1
         },
         wiring: [
             { pin: "VCC", esp: "5V" },
@@ -214,7 +234,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(VIB_PIN, INPUT);",
             read: "int vibration = digitalRead(VIB_PIN);",
             vars: "int vibration = 0;",
-            send: "Firebase.setInt(fbdo, sensorsPath(\"vibration\").c_str(), vibration);"
+            send: "Firebase.setInt(fbdo, sensorsPath(\"vibration\").c_str(), vibration);",
+            mock: "int vibration = random(0, 2);",
+            json: "doc[\"vibration\"] = vibration;"
         },
         wiring: [
             { pin: "VCC", esp: "3.3V/5V" },
@@ -237,7 +259,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(CURRENT_PIN, INPUT);",
             read: "int curRaw = analogRead(CURRENT_PIN);\n  float voltage = (curRaw / 4095.0) * 3.3;\n  float current = (voltage - 1.65) / 0.100; // sensitivity\n  if(current < 0) current = 0;",
             vars: "float current = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"current\").c_str(), current);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"current\").c_str(), current);",
+            mock: "float current = random(0, 1000) / 100.0;",
+            json: "doc[\"current\"] = current;"
         },
         wiring: [
             { pin: "VCC", esp: "5V" },
@@ -256,7 +280,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(VOLT_PIN, INPUT);",
             read: "// Simplified RMS calculation\n  float voltage = (analogRead(VOLT_PIN) / 4095.0) * 250.0;",
             vars: "float voltage = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"voltage\").c_str(), voltage);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"voltage\").c_str(), voltage);",
+            mock: "float voltage = random(220, 240) + random(0, 100) / 100.0;",
+            json: "doc[\"voltage\"] = voltage;"
         },
         wiring: [
             { pin: "VCC", esp: "5V" },
@@ -279,7 +305,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(WATER_PIN, INPUT);",
             read: "int waterRaw = analogRead(WATER_PIN);\n  float waterLevel = map(waterRaw, 0, 4095, 0, 100);",
             vars: "float waterLevel = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"waterLevel\").c_str(), waterLevel);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"waterLevel\").c_str(), waterLevel);",
+            mock: "float waterLevel = random(0, 100);",
+            json: "doc[\"waterLevel\"] = waterLevel;"
         },
         wiring: [
             { pin: "VCC", esp: "3.3V/5V" },
@@ -298,7 +326,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(FLOW_PIN, INPUT_PULLUP);\n  attachInterrupt(digitalPinToInterrupt(FLOW_PIN), flowISR, RISING);",
             read: "float flowRate = (flowPulses / 7.5); // L/min\n  flowPulses = 0; // Reset for next second",
             vars: "float flowRate = 0.0;",
-            send: "Firebase.setFloat(fbdo, sensorsPath(\"flowRate\").c_str(), flowRate);"
+            send: "Firebase.setFloat(fbdo, sensorsPath(\"flowRate\").c_str(), flowRate);",
+            mock: "float flowRate = random(0, 20);",
+            json: "doc[\"flowRate\"] = flowRate;"
         },
         wiring: [
             { pin: "Red", esp: "5V" },
@@ -312,12 +342,14 @@ export const SENSOR_DEFINITIONS = {
         category: "environmental",
         pins: { RX: 16, TX: 17 },
         code: {
-            include: "#include <SoftwareSerial.h>",
-            define: "SoftwareSerial co2Serial(16, 17); // RX, TX",
-            setup: "co2Serial.begin(9600);",
+            include: "",
+            define: "HardwareSerial co2Serial(2); // Use UART2",
+            setup: "co2Serial.begin(9600, SERIAL_8N1, 16, 17); // RX=16, TX=17",
             read: "// Simplified CO2 Read\n  int co2 = 400; // Placeholder for actual UART read logic",
             vars: "int co2 = 0;",
-            send: "Firebase.setInt(fbdo, sensorsPath(\"co2\").c_str(), co2);"
+            send: "Firebase.setInt(fbdo, sensorsPath(\"co2\").c_str(), co2);",
+            mock: "int co2 = random(400, 1000);",
+            json: "doc[\"co2\"] = co2;"
         },
         wiring: [
             { pin: "VCC", esp: "5V" },
@@ -337,7 +369,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(RELAY_PIN, OUTPUT);\n  digitalWrite(RELAY_PIN, LOW); // ON",
             read: "",
             vars: "",
-            send: "" // Relay is an actuator, logic is handled usually in main loop
+            send: "", // Relay is an actuator, logic is handled usually in main loop
+            mock: "",
+            json: ""
         },
         wiring: [
             { pin: "VCC", esp: "5V" },
@@ -356,7 +390,9 @@ export const SENSOR_DEFINITIONS = {
             setup: "pinMode(RPM_PIN, INPUT_PULLUP);\n  attachInterrupt(digitalPinToInterrupt(RPM_PIN), rpmISR, FALLING);",
             read: "int rpm = (rpmCount * 60); // simplified pulses per sec * 60\n  rpmCount = 0;",
             vars: "int rpm = 0;",
-            send: "Firebase.setInt(fbdo, sensorsPath(\"rpm\").c_str(), rpm);"
+            send: "Firebase.setInt(fbdo, sensorsPath(\"rpm\").c_str(), rpm);",
+            mock: "int rpm = random(0, 3000);",
+            json: "doc[\"rpm\"] = rpm;"
         },
         wiring: [
             { pin: "VCC", esp: "3.3V" },

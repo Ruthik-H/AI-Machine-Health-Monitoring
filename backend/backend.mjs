@@ -45,6 +45,34 @@ app.get("/api/machines", async (_req, res) => {
   }
 });
 
+// ✅ API: Receive Sensor Data from ESP32 (PROXY)
+app.post("/api/data/:deviceId", async (req, res) => {
+  const { deviceId } = req.params;
+  const sensorData = req.body; // { temperature: 25.5, humidity: 60, ... }
+
+  if (!deviceId || !sensorData) {
+    return res.status(400).json({ error: "Missing deviceId or data" });
+  }
+
+  console.log(`📡 Received data for ${deviceId}:`, sensorData);
+
+  try {
+    // 1. Update Realtime Values
+    await rtdb.ref(`/devices/${deviceId}/sensors`).update(sensorData);
+
+    // 2. Update Metadata
+    await rtdb.ref(`/devices/${deviceId}/meta`).update({
+      lastSeen: Math.floor(Date.now() / 1000), // Unix timestamp in seconds
+      online: true
+    });
+
+    res.json({ success: true, message: "Data forwarded to Firebase" });
+  } catch (error) {
+    console.error("❌ Error forwarding data to Firebase:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 // ✅ Start Server
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
