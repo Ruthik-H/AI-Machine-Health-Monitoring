@@ -16,7 +16,7 @@
 #define WIFI_PASSWORD "12345678"
 #define API_KEY "AIzaSyDpFXjNixlR2lkIFnc-hPzopNPri_DkVkg"
 #define DATABASE_URL "https://ai-machine-health-intelligence-default-rtdb.asia-southeast1.firebasedatabase.app"
-#define DEVICE_ID "MACHINE-RFF33T15"
+#define DEVICE_ID "MACHINE-H719BRX1"
 #define DHTPIN 4
 #define DHTTYPE DHT11
 Adafruit_BME280 bme; // I2C
@@ -25,12 +25,10 @@ Adafruit_BME280 bme; // I2C
 #define ECHO_PIN 13
 #define CURRENT_PIN 36
 #define WATER_PIN 33
-HardwareSerial co2Serial(2); // Use UART2
 #define RPM_PIN 18
 volatile int rpmCount = 0;
 void IRAM_ATTR rpmISR() { rpmCount++; }
 #define VOLT_PIN 39
-#define SOIL_PIN 32
 #define RELAY_PIN 5 
 
 // Firebase Objects
@@ -55,10 +53,8 @@ float gasLevel = 0.0;
 float distance = 0.0;
 float current = 0.0;
 float waterLevel = 0.0;
-int co2 = 0;
 int rpm = 0;
 float voltage = 0.0;
-float soilMoisture = 0.0;
 
 // Helper to build path: /devices/{ID}/sensors/{SENSOR}
 String sensorsPath(String sensorName) {
@@ -143,14 +139,10 @@ void loop() {
     current = random(0, 1000) / 100.0;
     // Water Level Depth (SIMULATION)
     waterLevel = random(0, 100);
-    // MH-Z19 CO2 Sensor (SIMULATION)
-    co2 = random(400, 1000);
     // IR Speed / Tachometer (SIMULATION)
     rpm = random(0, 3000);
     // ZMPT101B Voltage (SIMULATION)
     voltage = random(220, 240) + random(0, 100) / 100.0;
-    // Soil Moisture Sensor (SIMULATION)
-    soilMoisture = random(0, 100);
 
     // ---------------------------
     // 2. Send to Firebase (Direct)
@@ -184,14 +176,10 @@ void loop() {
       Firebase.RTDB.setFloat(&fbdo, sensorsPath("current").c_str(), current);
       // Water Level Depth
       Firebase.RTDB.setFloat(&fbdo, sensorsPath("waterLevel").c_str(), waterLevel);
-      // MH-Z19 CO2 Sensor
-      Firebase.RTDB.setInt(&fbdo, sensorsPath("co2").c_str(), co2);
       // IR Speed / Tachometer
       Firebase.RTDB.setInt(&fbdo, sensorsPath("rpm").c_str(), rpm);
       // ZMPT101B Voltage
       Firebase.RTDB.setFloat(&fbdo, sensorsPath("voltage").c_str(), voltage);
-      // Soil Moisture Sensor
-      Firebase.RTDB.setFloat(&fbdo, sensorsPath("soilMoisture").c_str(), soilMoisture);
       
     } else {
       Serial.println("Firebase not ready (token not generated yet or signup failed)");

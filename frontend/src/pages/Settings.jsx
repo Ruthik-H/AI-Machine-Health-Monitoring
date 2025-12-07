@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { ref, onValue, update } from "firebase/database";
 import { auth, db } from "../firebaseClient";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Settings as SettingsIcon,
   User,
@@ -15,6 +16,8 @@ import {
   Phone,
   Trash2,
   Key,
+  CheckCircle,
+  Cpu
 } from "lucide-react";
 import { sendPasswordResetEmail, deleteUser } from "firebase/auth";
 
@@ -133,6 +136,7 @@ export default function SettingsPage() {
   // APPLY THEME
   // ----------------------------
   const applyTheme = (theme) => {
+    // Force dark mode logic for now to allow vibrancy, or keep mixed
     if (theme === "light") {
       document.documentElement.classList.remove("dark");
     } else if (theme === "dark") {
@@ -162,7 +166,7 @@ export default function SettingsPage() {
   };
 
   // ----------------------------
-  // SAVE ALL SETTINGS (Creates config + thresholds if missing)
+  // SAVE ALL SETTINGS
   // ----------------------------
   const saveAll = async () => {
     if (!uid) return alert("Not logged in");
@@ -186,7 +190,7 @@ export default function SettingsPage() {
       await update(ref(db), updates);
       applyTheme(preferences.theme);
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 2000);
+      setTimeout(() => setShowSuccess(false), 3000);
     } catch (err) {
       console.error("Save error:", err);
       alert("Failed to save settings: " + err.message);
@@ -225,338 +229,364 @@ export default function SettingsPage() {
   const sections = [
     { id: "profile", icon: User, label: "Profile" },
     { id: "preferences", icon: Monitor, label: "Preferences" },
-    { id: "machine", icon: SettingsIcon, label: "Machine Config" },
+    { id: "machine", icon: Cpu, label: "Machine Config" },
     { id: "thresholds", icon: Sliders, label: "Thresholds" },
     { id: "notifications", icon: Bell, label: "Notifications" },
     { id: "account", icon: Shield, label: "Account" },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-all">
-      {/* Top Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-5 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <SettingsIcon className="w-7 h-7 text-blue-600" />
-          <h1 className="text-2xl font-bold">Settings</h1>
-        </div>
+    <div className="min-h-screen text-white pb-20">
 
-        <button
-          onClick={saveAll}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium"
-        >
-          <Save className="w-4 h-4" />
-          Save All
-        </button>
-      </header>
+      {/* Top Header */}
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="glass sticky top-0 z-40 border-b border-white/5 p-5 flex justify-between items-center"
+      >
+        <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/20">
+              <SettingsIcon className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight">System Settings</h1>
+          </div>
+
+          <button
+            onClick={saveAll}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg hover:shadow-blue-500/25 transition-all active:scale-95"
+          >
+            <Save className="w-4 h-4" />
+            Save Changes
+          </button>
+        </div>
+      </motion.header>
 
       {/* Toast */}
-      {showSuccess && (
-        <div className="fixed top-20 right-6 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
-          Saved successfully!
-        </div>
-      )}
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ x: 50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 50, opacity: 0 }}
+            className="fixed top-24 right-6 bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20 text-emerald-400 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 z-50"
+          >
+            <CheckCircle className="w-5 h-5" />
+            <span className="font-semibold">Settings saved successfully!</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className="flex">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-8 mt-10 px-6">
+
         {/* Sidebar */}
-        <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 min-h-screen">
-          {sections.map((s) => {
-            const Icon = s.icon;
-            return (
-              <button
-                key={s.id}
-                onClick={() => setActiveSection(s.id)}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg text-left mb-1 ${
-                  activeSection === s.id
-                    ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-medium"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                {s.label}
-              </button>
-            );
-          })}
-        </aside>
-
-        {/* Main */}
-        <main className="flex-1 p-8">
-          {/* PROFILE */}
-          {activeSection === "profile" && (
-            <div>
-              <h2 className="text-2xl font-bold mb-3">Profile Settings</h2>
-
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border dark:border-gray-700">
-                <div className="flex items-center gap-6 mb-6">
-                  <div className="relative">
-                    <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-300">
-                      {profile.photo ? (
-                        <img src={profile.photo} className="w-full h-full object-cover" alt="" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-4xl">
-                          {profile.name?.charAt(0)?.toUpperCase() || "U"}
-                        </div>
-                      )}
-                    </div>
-                    <label className="absolute bottom-0 right-0 bg-white dark:bg-gray-700 p-2 rounded-full cursor-pointer shadow-lg">
-                      <Camera className="w-5 h-5" />
-                      <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
-                    </label>
-                  </div>
-
-                  <div className="flex-1">
-                    <label>Name</label>
-                    <input
-                      value={profile.name}
-                      onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                      className="w-full p-2 mt-1 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"
-                    />
-
-                    <label className="mt-4">Email</label>
-                    <input
-                      value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      className="w-full p-2 mt-1 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* PREFERENCES */}
-          {activeSection === "preferences" && (
-            <div>
-              <h2 className="text-2xl font-bold mb-3">App Preferences</h2>
-
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border dark:border-gray-700">
-                <label className="block mb-2 font-medium">Theme</label>
-                <select
-                  value={preferences.theme}
-                  onChange={(e) => {
-                    setPreferences({ ...preferences, theme: e.target.value });
-                    applyTheme(e.target.value);
-                  }}
-                  className="w-full p-2 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"
-                >
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                  <option value="system">System</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* MACHINE CONFIG */}
-          {activeSection === "machine" && (
-            <div>
-              <h2 className="text-2xl font-bold mb-3">Machine Configuration</h2>
-
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border dark:border-gray-700">
-                <label>Select Machine</label>
-                <select
-                  value={selectedMachine}
-                  onChange={(e) => setSelectedMachine(e.target.value)}
-                  className="w-full p-2 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"
-                >
-                  {machines.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-
-                <label className="mt-4 block">Machine Name</label>
-                <input
-                  value={machineInfo.machineName}
-                  onChange={(e) =>
-                    setMachineInfo({ ...machineInfo, machineName: e.target.value })
-                  }
-                  className="w-full p-2 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"
-                />
-
-                <label className="mt-4 block">Location</label>
-                <input
-                  value={machineInfo.location}
-                  onChange={(e) =>
-                    setMachineInfo({ ...machineInfo, location: e.target.value })
-                  }
-                  className="w-full p-2 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"
-                />
-
-                <label className="mt-4 block">Machine Type</label>
-                <input
-                  value={machineInfo.machineType}
-                  onChange={(e) =>
-                    setMachineInfo({ ...machineInfo, machineType: e.target.value })
-                  }
-                  className="w-full p-2 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* THRESHOLDS */}
-          {activeSection === "thresholds" && (
-            <div>
-              <h2 className="text-2xl font-bold mb-3">Threshold Settings</h2>
-
-              <div className="grid grid-cols-2 gap-6">
-
-                {/* Temperature */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border dark:border-gray-700">
-                  <label>Temperature (°C)</label>
-                  <input
-                    type="number"
-                    value={thresholds.temperature}
-                    onChange={(e) =>
-                      setThresholds({ ...thresholds, temperature: Number(e.target.value) })
-                    }
-                    className="w-full p-2 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"
-                  />
-                </div>
-
-                {/* Vibration */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border dark:border-gray-700">
-                  <label>Vibration</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={thresholds.vibration}
-                    onChange={(e) =>
-                      setThresholds({ ...thresholds, vibration: Number(e.target.value) })
-                    }
-                    className="w-full p-2 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"
-                  />
-                </div>
-
-                {/* Current */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border dark:border-gray-700">
-                  <label>Current (A)</label>
-                  <input
-                    type="number"
-                    value={thresholds.current}
-                    onChange={(e) =>
-                      setThresholds({ ...thresholds, current: Number(e.target.value) })
-                    }
-                    className="w-full p-2 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"
-                  />
-                </div>
-
-                {/* RPM */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border dark:border-gray-700">
-                  <label>RPM</label>
-                  <input
-                    type="number"
-                    value={thresholds.rpm}
-                    onChange={(e) =>
-                      setThresholds({ ...thresholds, rpm: Number(e.target.value) })
-                    }
-                    className="w-full p-2 border dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-700"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* NOTIFICATIONS */}
-          {activeSection === "notifications" && (
-            <div>
-              <h2 className="text-2xl font-bold mb-3">Notification Settings</h2>
-
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border dark:border-gray-700 space-y-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-5 h-5 text-blue-500" />
-                    <span>Email Alerts</span>
-                  </div>
-
-                  <input
-                    type="checkbox"
-                    checked={notifications.emailAlerts}
-                    onChange={(e) =>
-                      setNotifications({ ...notifications, emailAlerts: e.target.checked })
-                    }
-                  />
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-5 h-5 text-green-500" />
-                    <span>SMS Alerts</span>
-                  </div>
-
-                  <input
-                    type="checkbox"
-                    checked={notifications.smsAlerts}
-                    onChange={(e) =>
-                      setNotifications({ ...notifications, smsAlerts: e.target.checked })
-                    }
-                  />
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-5 h-5 text-red-500" />
-                    <span>Critical Only</span>
-                  </div>
-
-                  <input
-                    type="checkbox"
-                    checked={notifications.criticalOnly}
-                    onChange={(e) =>
-                      setNotifications({ ...notifications, criticalOnly: e.target.checked })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ACCOUNT */}
-          {activeSection === "account" && (
-            <div>
-              <h2 className="text-2xl font-bold mb-3">Account Settings</h2>
-
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border dark:border-gray-700">
+        <motion.aside
+          initial={{ x: -20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="w-full md:w-72 glass-card h-fit sticky top-28"
+        >
+          <nav className="space-y-2">
+            {sections.map((s) => {
+              const Icon = s.icon;
+              const isActive = activeSection === s.id;
+              return (
                 <button
-                  onClick={resetPassword}
-                  className="w-full flex justify-between items-center p-4 bg-blue-100 dark:bg-blue-900 rounded-lg mb-4"
+                  key={s.id}
+                  onClick={() => setActiveSection(s.id)}
+                  className={`w-full flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-300 relative overflow-hidden group ${isActive
+                      ? "bg-blue-600/20 text-white font-bold border border-blue-500/30 shadow-inner"
+                      : "hover:bg-white/5 text-blue-100/70 hover:text-white"
+                    }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <Key className="w-5 h-5 text-blue-600" />
-                    <span>Reset Password</span>
-                  </div>
-                  ➜
+                  <div className={`active-indicator absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-transform duration-300 ${isActive ? 'scale-y-100' : 'scale-y-0'}`} />
+                  <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-accent-cyan' : 'text-blue-300/50 group-hover:text-white'}`} />
+                  {s.label}
                 </button>
+              );
+            })}
+          </nav>
+        </motion.aside>
 
-                <div className="border border-red-300 dark:border-red-700 p-4 rounded-lg bg-red-50 dark:bg-red-900">
-                  <p className="text-red-700 dark:text-red-300 mb-3">
-                    Deleting your account is permanent.
-                  </p>
-                  <button
-                    onClick={deleteAccount}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete Account
-                  </button>
+        {/* Main Content */}
+        <motion.main
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3 }}
+          className="flex-1 glass-card border border-white/5 min-h-[600px] relative overflow-hidden"
+        >
+          {/* Background Decor */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSection}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="p-2"
+            >
+
+              {/* PROFILE */}
+              {activeSection === "profile" && (
+                <div className="space-y-8">
+                  <div className="border-b border-white/10 pb-4">
+                    <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">Profile Settings</h2>
+                    <p className="text-blue-200/50 mt-1">Manage your public profile and personal details.</p>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-8 items-start">
+                    <div className="relative group mx-auto md:mx-0">
+                      <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-slate-700 to-slate-900 ring-4 ring-white/10 shadow-2xl">
+                        {profile.photo ? (
+                          <img src={profile.photo} className="w-full h-full object-cover" alt="" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-white/20">
+                            {profile.name?.charAt(0)?.toUpperCase() || <User size={40} />}
+                          </div>
+                        )}
+                      </div>
+                      <label className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-500 p-2.5 rounded-full cursor-pointer shadow-lg transition-transform hover:scale-110 active:scale-95 border-4 border-slate-900">
+                        <Camera className="w-5 h-5 text-white" />
+                        <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+                      </label>
+                    </div>
+
+                    <div className="flex-1 space-y-6 w-full">
+                      <div className="group">
+                        <label className="block text-sm font-medium text-blue-200/60 mb-2">Display Name</label>
+                        <input
+                          value={profile.name}
+                          onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                          className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-white placeholder-white/20 hover:bg-black/30"
+                          placeholder="Enter your name"
+                        />
+                      </div>
+
+                      <div className="group">
+                        <label className="block text-sm font-medium text-blue-200/60 mb-2">Email Address</label>
+                        <input
+                          value={profile.email}
+                          onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                          className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-white placeholder-white/20 hover:bg-black/30"
+                          placeholder="name@example.com"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
+              )}
 
-      {/* Small fade animation */}
-      <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-      `}</style>
+              {/* PREFERENCES */}
+              {activeSection === "preferences" && (
+                <div className="space-y-8">
+                  <div className="border-b border-white/10 pb-4">
+                    <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">App Preferences</h2>
+                    <p className="text-blue-200/50 mt-1">Customize your interface experience.</p>
+                  </div>
+
+                  <div className="p-6 bg-white/5 rounded-2xl border border-white/5">
+                    <label className="block text-sm font-medium text-blue-200/60 mb-3">Color Theme</label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {['light', 'dark', 'system'].map((theme) => (
+                        <button
+                          key={theme}
+                          onClick={() => {
+                            setPreferences({ ...preferences, theme });
+                            applyTheme(theme);
+                          }}
+                          className={`p-4 rounded-xl border transition-all ${preferences.theme === theme
+                              ? 'bg-blue-600/20 border-blue-500 text-white shadow-lg shadow-blue-500/10'
+                              : 'bg-black/20 border-white/5 text-gray-400 hover:bg-black/30'
+                            }`}
+                        >
+                          <div className="font-bold capitalize mb-1">{theme} Mode</div>
+                          <div className="text-xs opacity-60">
+                            {theme === 'light' ? 'Bright & Clear' : theme === 'dark' ? 'Easy on Eyes' : 'Follows OS'}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MACHINE CONFIG */}
+              {activeSection === "machine" && (
+                <div className="space-y-8">
+                  <div className="border-b border-white/10 pb-4">
+                    <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">Machine Configuration</h2>
+                    <p className="text-blue-200/50 mt-1">Update details for specific devices.</p>
+                  </div>
+
+                  <div className="p-6 bg-white/5 rounded-2xl border border-white/5 space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200/60 mb-2">Target Machine</label>
+                      <select
+                        value={selectedMachine}
+                        onChange={(e) => setSelectedMachine(e.target.value)}
+                        className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {machines.map((m) => (
+                          <option key={m} value={m} className="bg-slate-900">
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-blue-200/60 mb-2">Machine Name</label>
+                        <input
+                          value={machineInfo.machineName}
+                          onChange={(e) => setMachineInfo({ ...machineInfo, machineName: e.target.value })}
+                          className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-blue-200/60 mb-2">Location / Zone</label>
+                        <input
+                          value={machineInfo.location}
+                          onChange={(e) => setMachineInfo({ ...machineInfo, location: e.target.value })}
+                          className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200/60 mb-2">Type / Model</label>
+                      <input
+                        value={machineInfo.machineType}
+                        onChange={(e) => setMachineInfo({ ...machineInfo, machineType: e.target.value })}
+                        className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* THRESHOLDS */}
+              {activeSection === "thresholds" && (
+                <div className="space-y-8">
+                  <div className="border-b border-white/10 pb-4">
+                    <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">Safety Thresholds</h2>
+                    <p className="text-blue-200/50 mt-1">Set limits for automatic alerts.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                      { label: "Temperature (°C)", key: 'temperature', color: 'text-red-400' },
+                      { label: "Vibration (mm/s)", key: 'vibration', step: '0.01', color: 'text-fuchsia-400' },
+                      { label: "Current (A)", key: 'current', color: 'text-yellow-400' },
+                      { label: "RPM Limit", key: 'rpm', color: 'text-green-400' }
+                    ].map((item) => (
+                      <div key={item.key} className="p-6 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-colors">
+                        <div className={`text-sm font-bold uppercase tracking-wider mb-2 ${item.color}`}>{item.label}</div>
+                        <div className="flex items-center gap-4">
+                          <input
+                            type="number"
+                            step={item.step || "1"}
+                            value={thresholds[item.key]}
+                            onChange={(e) => setThresholds({ ...thresholds, [item.key]: Number(e.target.value) })}
+                            className="w-full text-2xl font-black bg-transparent border-b border-white/10 focus:border-blue-500 outline-none py-2 text-white"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* NOTIFICATIONS */}
+              {activeSection === "notifications" && (
+                <div className="space-y-8">
+                  <div className="border-b border-white/10 pb-4">
+                    <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">Alert Preferences</h2>
+                    <p className="text-blue-200/50 mt-1">Configure how you receive system updates.</p>
+                  </div>
+
+                  <div className="space-y-4 p-6 bg-white/5 rounded-2xl border border-white/5">
+                    {[
+                      { key: 'emailAlerts', label: 'Email Alerts', icon: Mail, color: 'text-blue-400' },
+                      { key: 'smsAlerts', label: 'SMS Alerts', icon: Phone, color: 'text-green-400' },
+                      { key: 'criticalOnly', label: 'Critical Errors Only', icon: Bell, color: 'text-red-400' }
+                    ].map((item) => (
+                      <div key={item.key} className="flex items-center justify-between p-4 rounded-xl bg-black/20 border border-white/5 hover:border-white/10 transition-all">
+                        <div className="flex items-center gap-4">
+                          <div className={`p-2 rounded-lg bg-white/5 ${item.color}`}>
+                            <item.icon className="w-5 h-5" />
+                          </div>
+                          <span className="font-medium">{item.label}</span>
+                        </div>
+
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={notifications[item.key]}
+                            onChange={(e) => setNotifications({ ...notifications, [item.key]: e.target.checked })}
+                          />
+                          <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ACCOUNT */}
+              {activeSection === "account" && (
+                <div className="space-y-8">
+                  <div className="border-b border-white/10 pb-4">
+                    <h2 className="text-3xl font-bold text-red-400">Danger Zone</h2>
+                    <p className="text-red-200/50 mt-1">Irreversible account actions.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <button
+                      onClick={resetPassword}
+                      className="w-full flex justify-between items-center p-6 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-xl transition-all group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                          <Key className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                          <h4 className="font-bold text-blue-100">Reset Password</h4>
+                          <p className="text-sm text-blue-200/50">Send a password reset link to your email.</p>
+                        </div>
+                      </div>
+                      <span className="text-blue-400 group-hover:translate-x-1 transition-transform">➜</span>
+                    </button>
+
+                    <div className="p-6 bg-red-500/5 border border-red-500/20 rounded-xl">
+                      <div className="flex items-start gap-4 mb-6">
+                        <div className="p-2 bg-red-500/20 rounded-lg text-red-400">
+                          <Trash2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-red-200">Delete Account</h4>
+                          <p className="text-sm text-red-200/50 mt-1">
+                            Permanently delete your account and all associated data. This action cannot be undone.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={deleteAccount}
+                        className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg hover:shadow-red-900/40 transition-all w-full md:w-auto"
+                      >
+                        Confirm Deletion
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </motion.div>
+          </AnimatePresence>
+        </motion.main>
+      </div>
     </div>
   );
 }
