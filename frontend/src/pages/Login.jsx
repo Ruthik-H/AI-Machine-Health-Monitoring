@@ -90,7 +90,7 @@ export default function Login() {
           initial={{ y: 100, opacity: 0, rotateX: -10 }}
           animate={{ y: 0, opacity: 1, rotateX: 0 }}
           transition={{ duration: 0.8, delay: 0.2, type: "spring" }}
-          className="glass-card border-t border-l border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group"
+          className="glass-card-dark border-t border-l border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group"
         >
           {/* Neon Glow Hover Effect */}
           <div className="absolute -inset-1 bg-gradient-to-r from-accent-cyan via-accent-fuchsia to-accent-violet opacity-0 group-hover:opacity-20 transition duration-1000 blur-xl"></div>

@@ -93,7 +93,7 @@ export default function Signup() {
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.1, type: "spring" }}
-          className="glass-card shadow-[0_0_50px_rgba(0,0,0,0.3)] relative group border border-white/10"
+          className="glass-card-dark shadow-[0_0_50px_rgba(0,0,0,0.3)] relative group border border-white/10"
         >
           {error && (
             <motion.div
