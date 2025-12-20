@@ -1,10 +1,9 @@
-// File: frontend/src/pages/Analytics.jsx
+// frontend/src/pages/Analytics.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { ref, onValue, query, orderByKey, limitToLast } from "firebase/database";
 import { db } from "../firebaseClient";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { BarChart, Bar } from "recharts";
-import { Cpu, Download } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { Download } from "lucide-react";
 
 function isoToDate(key) {
   const d = new Date(key);
@@ -21,8 +20,7 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const deviceRef = ref(db, "devices");
-    const unsub = onValue(deviceRef, (snap) => {
+    onValue(ref(db, "devices"), (snap) => {
       const data = snap.val() || {};
       const list = Object.keys(data).map((id) => ({
         deviceId: id,
@@ -32,34 +30,24 @@ export default function Analytics() {
       setSelectedMachine((cur) => cur || (list[0] && list[0].deviceId) || "");
       setLoading(false);
     });
-    return () => unsub();
   }, []);
 
   useEffect(() => {
     if (!selectedMachine) return;
     const histRef = query(ref(db, `history/${selectedMachine}`), orderByKey(), limitToLast(500));
-    const unsub = onValue(histRef, (snap) => {
-      const data = snap.val() || {};
-      setHistory(data);
-    });
-    return () => unsub();
+    onValue(histRef, (snap) => setHistory(snap.val() || {}));
   }, [selectedMachine]);
 
   const series = useMemo(() => {
-    const arr = Object.entries(history)
-      .map(([k, v]) => {
-        const t = isoToDate(k);
-        return {
-          timeKey: k,
-          time: t,
-          temperature: Number(v.temperature ?? v.temp ?? 0),
-          current: Number(v.current ?? 0),
-          vibration: Number(v.vibration ?? 0),
-          rpm: Number(v.rpm ?? 0),
-        };
-      })
+    return Object.entries(history)
+      .map(([k, v]) => ({
+        time: isoToDate(k),
+        temperature: Number(v.temperature ?? v.temp ?? 0),
+        current: Number(v.current ?? 0),
+        vibration: Number(v.vibration ?? 0),
+        rpm: Number(v.rpm ?? 0),
+      }))
       .sort((a, b) => a.time - b.time);
-    return arr;
   }, [history]);
 
   const filtered = useMemo(() => {
@@ -69,152 +57,113 @@ export default function Analytics() {
     if (range === "1h") cutoff = now - 3600000;
     else if (range === "24h") cutoff = now - 86400000;
     else if (range === "7d") cutoff = now - 604800000;
-    else cutoff = 0;
     return series.filter((s) => s.time.getTime() >= cutoff);
   }, [series, range]);
 
   const toCSV = () => {
     if (!filtered.length) return alert("No data");
     const rows = [["timestamp", "temperature", "current", "vibration", "rpm"]];
-    for (const r of filtered) {
-      rows.push([r.time.toISOString(), r.temperature, r.current, r.vibration, r.rpm]);
-    }
-    const csv = rows.map((r) => r.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
+    filtered.forEach(r => rows.push([r.time.toISOString(), r.temperature, r.current, r.vibration, r.rpm]));
+    const blob = new Blob([rows.map(r => r.join(",")).join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${selectedMachine || "machine"}-history.csv`;
+    a.download = `${selectedMachine}-history.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  if (loading) return <div className="p-6">Loading analytics...</div>;
+  const ChartCard = ({ title, dataKey, color, fill }) => (
+    <div className="pro-card p-6 min-h-[300px]">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-bold text-slate-800">{title}</h3>
+        <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Trend</div>
+      </div>
+      <div className="h-[220px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={filtered}>
+            <defs>
+              <linearGradient id={`grad-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={color} stopOpacity={0.2} />
+                <stop offset="95%" stopColor={color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+            <XAxis dataKey="time" tick={{ fill: '#94A3B8', fontSize: 10 }} tickFormatter={t => t.toLocaleTimeString()} />
+            <YAxis tick={{ fill: '#94A3B8', fontSize: 10 }} axisLine={false} tickLine={false} />
+            <Tooltip
+              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+              labelStyle={{ color: '#64748B' }}
+            />
+            <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} fill={`url(#grad-${dataKey})`} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+
+  if (loading) return <div className="p-10 text-center text-slate-400">Loading Analytics...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 p-6">
+    <div className="w-full max-w-[1600px] mx-auto animate-fade-in pb-10">
 
-      <nav className="bg-gradient-to-r from-slate-900 to-blue-900 text-white rounded-md p-4 mb-6 flex items-center gap-4">
-        <Cpu className="w-6 h-6 text-cyan-300" />
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <div>
-          <h1 className="font-bold">Analytics</h1>
-          <p className="text-xs text-cyan-200">Historical trends & reports</p>
+          <h1 className="text-3xl font-bold text-slate-900">Analytics</h1>
+          <p className="text-slate-500">Historical performance data and export</p>
         </div>
-        <div className="ml-auto flex gap-2">
-          <button onClick={toCSV} className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-lg">
+        <div className="flex gap-2">
+          <button onClick={toCSV} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 font-semibold hover:bg-slate-50 transition-colors shadow-sm">
             <Download className="w-4 h-4" /> Export CSV
           </button>
         </div>
-      </nav>
+      </div>
 
-      <div className="mb-6 flex items-center gap-4">
+      {/* FILTERS */}
+      <div className="flex flex-wrap items-center gap-4 mb-8 bg-white p-2 rounded-xl border border-slate-200 shadow-sm w-fit">
         <select
-          className="px-3 py-2 border rounded-lg"
           value={selectedMachine}
           onChange={(e) => setSelectedMachine(e.target.value)}
+          className="px-3 py-2 bg-slate-50 border-none rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
         >
-          <option value="">-- select machine --</option>
-          {machines.map((m) => (
-            <option key={m.deviceId} value={m.deviceId}>
-              {m.machineName} ({m.deviceId})
-            </option>
-          ))}
+          {machines.map(m => <option key={m.deviceId} value={m.deviceId}>{m.machineName}</option>)}
         </select>
-
-        <div className="flex gap-2">
-          <button onClick={() => setRange("1h")} className={`px-3 py-2 rounded ${range === "1h" ? "bg-blue-600 text-white" : "bg-white"}`}>Last 1 hour</button>
-          <button onClick={() => setRange("24h")} className={`px-3 py-2 rounded ${range === "24h" ? "bg-blue-600 text-white" : "bg-white"}`}>24 hours</button>
-          <button onClick={() => setRange("7d")} className={`px-3 py-2 rounded ${range === "7d" ? "bg-blue-600 text-white" : "bg-white"}`}>7 days</button>
-          <button onClick={() => setRange("all")} className={`px-3 py-2 rounded ${range === "all" ? "bg-blue-600 text-white" : "bg-white"}`}>All</button>
+        <div className="h-6 w-px bg-slate-200"></div>
+        <div className="flex gap-1">
+          {['1h', '24h', '7d', 'all'].map(r => (
+            <button
+              key={r} onClick={() => setRange(r)}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${range === r ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`}
+            >
+              {r === '1h' ? '1 Hour' : r === '24h' ? '24 Hours' : r === '7d' ? '7 Days' : 'All Time'}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
-          <h3 className="font-semibold mb-3">Temperature</h3>
-          <div style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={filtered}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickFormatter={(t) => new Date(t).toLocaleTimeString()} />
-                <YAxis />
-                <Tooltip labelFormatter={(v) => new Date(v).toLocaleString()} />
-                <Area type="monotone" dataKey="temperature" stroke="#ef4444" fill="#fecaca" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* CHARTS GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ChartCard title="Temperature History" dataKey="temperature" color="#EF4444" fill="#FECACA" />
+        <ChartCard title="Current Usage" dataKey="current" color="#EAB308" fill="#FDE047" />
+        <ChartCard title="Vibration Levels" dataKey="vibration" color="#8B5CF6" fill="#DDD6FE" />
 
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
-          <h3 className="font-semibold mb-3">Current</h3>
-          <div style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={filtered}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickFormatter={(t) => new Date(t).toLocaleTimeString()} />
-                <YAxis />
-                <Tooltip labelFormatter={(v) => new Date(v).toLocaleString()} />
-                <Area type="monotone" dataKey="current" stroke="#f59e0b" fill="#fde68a" />
-              </AreaChart>
-            </ResponsiveContainer>
+        <div className="pro-card p-6 min-h-[300px]">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-slate-800">RPM Distribution</h3>
           </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
-          <h3 className="font-semibold mb-3">Vibration</h3>
-          <div style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={filtered}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickFormatter={(t) => new Date(t).toLocaleTimeString()} />
-                <YAxis />
-                <Tooltip labelFormatter={(v) => new Date(v).toLocaleString()} />
-                <Area type="monotone" dataKey="vibration" stroke="#7c3aed" fill="#ede9fe" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl border shadow-sm">
-          <h3 className="font-semibold mb-3">RPM (bar)</h3>
-          <div style={{ height: 260 }}>
+          <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={filtered}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" tickFormatter={(t) => new Date(t).toLocaleTimeString()} />
-                <YAxis />
-                <Tooltip labelFormatter={(v) => new Date(v).toLocaleString()} />
-                <Bar dataKey="rpm" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="time" tickFormatter={t => t.toLocaleTimeString()} tick={{ fill: '#94A3B8', fontSize: 10 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10 }} />
+                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+                <Bar dataKey="rpm" fill="#10B981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
-
-      <SummaryCard data={filtered} />
-    </div>
-  );
-}
-
-function SummaryCard({ data }) {
-  if (!data || data.length === 0)
-    return <div className="mt-6 text-gray-500">No historical data for this range.</div>;
-
-  const temps = data.map((d) => d.temperature);
-  const currents = data.map((d) => d.current);
-  const vib = data.map((d) => d.vibration);
-  const avg = (arr) => (arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(2);
-
-  return (
-    <div className="bg-white p-6 rounded-xl border shadow-sm mt-6">
-      <h3 className="font-semibold mb-3">Summary</h3>
-      <div className="grid grid-cols-2 gap-4 text-gray-800">
-        <div><strong>Avg Temp:</strong> {avg(temps)} °C</div>
-        <div><strong>Max Temp:</strong> {Math.max(...temps)}</div>
-        <div><strong>Avg Current:</strong> {avg(currents)} A</div>
-        <div><strong>Max Current:</strong> {Math.max(...currents)}</div>
-        <div><strong>Avg Vibration:</strong> {avg(vib)} mm/s</div>
-        <div><strong>Samples:</strong> {data.length}</div>
       </div>
     </div>
   );

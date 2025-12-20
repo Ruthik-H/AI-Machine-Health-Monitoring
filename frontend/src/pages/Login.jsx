@@ -1,7 +1,7 @@
 // File Location: frontend/src/pages/Login.jsx
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Mail, Lock, Eye, EyeOff, AlertCircle, Sparkles } from 'lucide-react';
+import { Activity, Mail, Lock, Eye, EyeOff, AlertCircle, Sparkles, ArrowRight } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseClient';
@@ -39,84 +39,59 @@ export default function Login() {
 
   const pageVariants = {
     hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { duration: 0.8, ease: "easeOut" }
-    },
-    exit: { opacity: 0, transition: { duration: 0.5 } }
+    visible: { opacity: 1, transition: { duration: 0.8 } }
   };
 
   return (
     <motion.div
       initial="hidden"
       animate="visible"
-      exit="exit"
       variants={pageVariants}
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      className="min-h-screen flex items-center justify-center p-4"
     >
-      {/* Main Content */}
-      <div className="w-full max-w-md relative z-10 perspective-1000">
+      <div className="w-full max-w-md">
 
         {/* Logo & Welcome */}
-        <motion.div
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, type: "spring", bounce: 0.5 }}
-          className="text-center mb-10"
-        >
-          <motion.div
-            animate={{
-              rotate: [0, 5, -5, 0],
-              y: [0, -10, 0]
-            }}
-            transition={{
-              duration: 6,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-            className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-tr from-accent-cyan via-accent-violet to-accent-fuchsia rounded-3xl shadow-[0_0_50px_rgba(139,92,246,0.5)] mb-6 backdrop-blur-md border border-white/20"
-          >
-            <Activity className="w-12 h-12 text-white drop-shadow-lg" />
-          </motion.div>
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl shadow-xl mb-6">
+            <Activity className="w-10 h-10 text-white" />
+          </div>
 
-          <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-white mb-3 tracking-tight filter drop-shadow-lg">
+          <h1 className="text-4xl font-bold text-gray-900 mb-3 tracking-tight">
             Welcome Back
           </h1>
-          <p className="text-lg text-blue-200/80 font-medium tracking-wide">Enter the future of monitoring</p>
-        </motion.div>
+          <p className="text-lg text-gray-600">Enter your credentials to access the dashboard</p>
+        </div>
 
         {/* Login Form Card */}
         <motion.div
-          initial={{ y: 100, opacity: 0, rotateX: -10 }}
-          animate={{ y: 0, opacity: 1, rotateX: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, type: "spring" }}
-          className="glass-card-dark border-t border-l border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8"
         >
-          {/* Neon Glow Hover Effect */}
-          <div className="absolute -inset-1 bg-gradient-to-r from-accent-cyan via-accent-fuchsia to-accent-violet opacity-0 group-hover:opacity-20 transition duration-1000 blur-xl"></div>
-
           {error && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
-              className="mb-6 p-4 bg-red-500/20 border border-red-500/40 rounded-xl flex items-center gap-3 backdrop-blur-md"
+              className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3"
             >
-              <AlertCircle className="w-5 h-5 text-red-400" />
-              <p className="text-sm font-medium text-red-200">{error}</p>
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <p className="text-sm font-medium text-red-700">{error}</p>
             </motion.div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-6 relative z-10">
+          <form onSubmit={handleLogin} className="space-y-6">
             {/* Email */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-blue-200/80 ml-1">Email Address</label>
-              <div className="relative group/input">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-300/50 group-focus-within/input:text-accent-cyan transition-colors" />
+              <label className="text-sm font-semibold text-gray-700 ml-1">Email Address</label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-blue-300/30 focus:outline-none focus:bg-white/10 focus:border-accent-cyan/50 focus:ring-1 focus:ring-accent-cyan/50 transition-all duration-300"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                   placeholder="name@company.com"
                 />
               </div>
@@ -124,20 +99,20 @@ export default function Login() {
 
             {/* Password */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-blue-200/80 ml-1">Password</label>
-              <div className="relative group/input">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-300/50 group-focus-within/input:text-accent-fuchsia transition-colors" />
+              <label className="text-sm font-semibold text-gray-700 ml-1">Password</label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-600 transition-colors" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-blue-300/30 focus:outline-none focus:bg-white/10 focus:border-accent-fuchsia/50 focus:ring-1 focus:ring-accent-fuchsia/50 transition-all duration-300"
+                  className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-300/50 hover:text-white transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -146,26 +121,24 @@ export default function Login() {
 
             {/* Login Button */}
             <motion.button
-              whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(139, 92, 246, 0.5)" }}
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               disabled={loading}
-              className="w-full relative overflow-hidden group/btn bg-gradient-to-r from-accent-violet via-accent-fuchsia to-accent-violet bg-[length:200%_auto] hover:bg-right transition-all duration-500 text-white font-bold py-4 rounded-xl shadow-lg border border-white/20"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl hover:opacity-90 transition-all flex items-center justify-center gap-2"
             >
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                {loading ? (
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>Sign In <Sparkles className="w-5 h-5" /></>
-                )}
-              </span>
+              {loading ? (
+                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>Sign In <ArrowRight className="w-5 h-5" /></>
+              )}
             </motion.button>
           </form>
 
           {/* Sign Up Link */}
-          <div className="mt-8 text-center bg-white/5 rounded-xl py-4 border border-white/5">
-            <p className="text-sm text-blue-200/60">
+          <div className="mt-8 text-center pt-6 border-t border-gray-100">
+            <p className="text-sm text-gray-500">
               New to DashPro?{" "}
-              <Link to="/signup" className="text-accent-cyan font-bold hover:text-white transition-colors underline decoration-transparent hover:decoration-accent-cyan/50 underline-offset-4">
+              <Link to="/signup" className="text-blue-600 font-bold hover:text-blue-700 transition-colors">
                 Create Account
               </Link>
             </p>

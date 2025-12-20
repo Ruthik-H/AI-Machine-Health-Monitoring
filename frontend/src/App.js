@@ -1,56 +1,46 @@
 // frontend/src/App.js
 import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import AddMachine from "./pages/AddMachine";
 import Landing from "./pages/Landing";
-
 import SettingsPage from "./pages/Settings";
 import AnalyticsPage from "./pages/Analytics";
+import Sidebar from "./components/Sidebar";
 
-import Background from "./components/Background";
+// Layout Wrapper for Authenticated Pages
+const AppLayout = ({ children }) => (
+  <div className="flex min-h-screen bg-[#F8FAFC]">
+    <Sidebar />
+    {/* Main Content Area - Offset for fixed sidebar */}
+    <main className="flex-1 ml-20 lg:ml-64 p-4 lg:p-8 h-screen overflow-y-auto">
+      {children}
+    </main>
+  </div>
+);
 
 export default function App() {
-  // Apply theme on app load
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") || "system";
-
-    const applyTheme = (theme) => {
-      // Force dark mode for now as per "stunning" requirements often imply dark mode
-      // But we respect the toggle if we want. 
-      // Given the "glass/neon" vibe, dark mode usually looks best.
-      // Let's ensure 'dark' class is present for the effects to pop.
-      document.documentElement.classList.add("dark");
-    };
-
-    applyTheme(savedTheme);
+    // Ensure light mode is forced for professional UI
+    document.documentElement.classList.remove("dark");
   }, []);
 
   return (
     <Router>
-      <Background />
       <Routes>
-        {/* Home */}
+        {/* Public Routes */}
         <Route path="/" element={<Landing />} />
-
-        {/* Auth */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* Dashboard */}
-        <Route path="/dashboard" element={<Dashboard />} />
-
-        {/* Add Machine */}
-        <Route path="/add-machine" element={<AddMachine />} />
-
-        {/* Settings */}
-        <Route path="/settings" element={<SettingsPage />} />
-
-        {/* Analytics */}
-        <Route path="/analytics" element={<AnalyticsPage />} />
+        {/* Authenticated Routes with Sidebar Layout */}
+        <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+        <Route path="/add-machine" element={<AppLayout><AddMachine /></AppLayout>} />
+        <Route path="/settings" element={<AppLayout><SettingsPage /></AppLayout>} />
+        <Route path="/analytics" element={<AppLayout><AnalyticsPage /></AppLayout>} />
       </Routes>
     </Router>
   );

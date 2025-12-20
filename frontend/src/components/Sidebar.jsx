@@ -1,111 +1,97 @@
-// File Location: frontend/src/components/Sidebar.jsx
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
-  ShoppingCart, 
-  Package, 
-  BarChart3, 
-  Settings, 
-  FileText,
+// frontend/src/components/Sidebar.jsx
+import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Settings,
+  BarChart3,
+  PlusCircle,
+  LogOut,
+  Cpu,
   HelpCircle,
-  ChevronLeft,
-  ChevronRight
+  Menu
 } from 'lucide-react';
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebaseClient';
 
-export default function Sidebar() {
+const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', active: true },
-    { icon: Users, label: 'Customers', path: '/customers', active: false },
-    { icon: ShoppingCart, label: 'Orders', path: '/orders', active: false },
-    { icon: Package, label: 'Products', path: '/products', active: false },
-    { icon: BarChart3, label: 'Analytics', path: '/analytics', active: false },
-    { icon: FileText, label: 'Reports', path: '/reports', active: false },
-    { icon: Settings, label: 'Settings', path: '/settings', active: false },
-    { icon: HelpCircle, label: 'Help', path: '/help', active: false },
-  ];
-
-  const isActive = (path) => {
-    return location.pathname === path;
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate('/login');
   };
 
-  return (
-    <aside 
-      className={`${
-        isCollapsed ? 'w-20' : 'w-64'
-      } hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 relative`}
-    >
-      {/* Collapse Button */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-8 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors z-10"
-      >
-        {isCollapsed ? (
-          <ChevronRight className="w-4 h-4 text-gray-600" />
-        ) : (
-          <ChevronLeft className="w-4 h-4 text-gray-600" />
-        )}
-      </button>
+  const navItems = [
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Analytics', path: '/analytics', icon: BarChart3 },
+    { label: 'Add Machine', path: '/add-machine', icon: PlusCircle },
+    { label: 'Settings', path: '/settings', icon: Settings },
+  ];
 
-      {/* Menu Items */}
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        {menuItems.map((item, index) => {
+  const isActive = (path) => location.pathname === path;
+
+  return (
+    <div className="h-screen w-20 lg:w-64 fixed left-0 top-0 bg-white border-r border-slate-200 flex flex-col justify-between z-50 transition-all duration-300">
+
+      {/* 1. Header / Logo */}
+      <div className="p-6 flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20 flex-shrink-0">
+          <Cpu className="text-white w-6 h-6" />
+        </div>
+        <div className="hidden lg:block">
+          <h1 className="font-bold text-slate-900 text-lg leading-tight">DashPro</h1>
+          <p className="text-xs text-slate-500 font-medium">Enterprise Monitor</p>
+        </div>
+      </div>
+
+      {/* 2. Navigation */}
+      <nav className="flex-1 px-4 space-y-2 mt-4">
+        <p className="hidden lg:block px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Platform</p>
+
+        {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
-          
           return (
             <button
-              key={index}
+              key={item.path}
               onClick={() => navigate(item.path)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                active
-                  ? 'bg-blue-50 text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              } ${isCollapsed ? 'justify-center' : ''}`}
-              title={isCollapsed ? item.label : ''}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group relative
+                ${active
+                  ? 'bg-slate-900 text-white shadow-md'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                }`}
             >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              {!isCollapsed && (
-                <span className="text-sm">{item.label}</span>
-              )}
+              <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
+              <span className={`hidden lg:block font-medium ${active ? 'text-white' : ''}`}>
+                {item.label}
+              </span>
+
+              {/* Active Indicator Line */}
+              {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-blue-500 lg:hidden"></div>}
             </button>
           );
         })}
       </nav>
 
-      {/* Bottom Section - User Tier Info */}
-      {!isCollapsed && (
-        <div className="p-4 border-t border-gray-200">
-          <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-900">Pro Plan</p>
-                <p className="text-xs text-gray-500">Active</p>
-              </div>
-            </div>
-            <button className="w-full mt-2 bg-white text-blue-600 text-xs font-medium py-2 rounded-lg hover:bg-gray-50 transition-colors">
-              Upgrade Plan
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 3. Footer / User Actions */}
+      <div className="p-4 border-t border-slate-100">
+        <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-all mb-2">
+          <HelpCircle className="w-5 h-5" />
+          <span className="hidden lg:block font-medium">Support</span>
+        </button>
 
-      {/* Collapsed Bottom Icon */}
-      {isCollapsed && (
-        <div className="p-4 border-t border-gray-200 flex justify-center">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
-            <BarChart3 className="w-5 h-5 text-white" />
-          </div>
-        </div>
-      )}
-    </aside>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition-all"
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="hidden lg:block font-medium">Sign Out</span>
+        </button>
+      </div>
+    </div>
   );
-}
+};
+
+export default Sidebar;

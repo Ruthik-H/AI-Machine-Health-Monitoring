@@ -2,424 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================
-   VIBRANT WHITE AGGRESSIVE THEME
-   Bold Colors, Energetic Design
-   ============================================ */
-
-body {
-  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 25%, #fef3c7 50%, #fce7f3 75%, #f3e8ff 100%);
-  background-size: 400% 400%;
-  animation: colorfulShift 15s ease infinite;
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
-}
-
-@keyframes colorfulShift {
-
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
+@layer base {
+  body {
+    @apply bg-[#F8FAFC] text-slate-900 overflow-x-hidden antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
 
-/* Vibrant Floating Shapes */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.15), transparent 50%),
-    radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.15), transparent 50%),
-    radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.12), transparent 50%),
-    radial-gradient(circle at 90% 20%, rgba(249, 115, 22, 0.12), transparent 50%),
-    radial-gradient(circle at 10% 80%, rgba(34, 197, 94, 0.12), transparent 50%);
-  background-size: 150% 150%, 180% 180%, 200% 200%, 160% 160%, 170% 170%;
-  animation: floatingShapes 20s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 0;
-}
+@layer components {
 
-@keyframes floatingShapes {
-
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
+  /* PROFESSIONAL CARD */
+  .pro-card {
+    @apply bg-white border border-slate-200 rounded-2xl shadow-sm transition-all duration-300;
   }
 
-  33% {
-    transform: translate(30px, -30px) scale(1.1);
+  .pro-card:hover {
+    @apply shadow-md border-slate-300 transform -translate-y-[1px];
   }
 
-  66% {
-    transform: translate(-30px, 30px) scale(0.9);
-  }
-}
-
-/* ============================================
-   AGGRESSIVE GLASSMORPHISM
-   ============================================ */
-
-.glass-card-dark {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border-radius: 24px;
-  padding: 32px;
-  border: 3px solid transparent;
-  background-clip: padding-box;
-  position: relative;
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.1),
-    0 0 0 1px rgba(0, 0, 0, 0.05);
-}
-
-.glass-card-dark::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 24px;
-  padding: 3px;
-  background: linear-gradient(135deg, #3b82f6, #ec4899, #8b5cf6, #f59e0b);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: rotateBorder 3s linear infinite;
-}
-
-@keyframes rotateBorder {
-  0% {
-    filter: hue-rotate(0deg);
+  /* GLASS EFFECT (Subtle) */
+  .glass-pro {
+    @apply bg-white/80 backdrop-blur-xl border-r border-slate-200 shadow-sm;
   }
 
-  100% {
-    filter: hue-rotate(360deg);
+  /* TYPOGRAPHY */
+  .text-header {
+    @apply text-slate-900 font-bold tracking-tight;
+  }
+
+  .text-sub {
+    @apply text-slate-500 font-medium text-sm;
+  }
+
+  /* BENTO GRID UTILITIES */
+  .bento-grid {
+    @apply grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6;
+  }
+
+  .bento-item-1x1 {
+    @apply col-span-1 row-span-1;
+  }
+
+  .bento-item-2x1 {
+    @apply col-span-2 row-span-1;
+  }
+
+  .bento-item-2x2 {
+    @apply col-span-2 row-span-2;
+  }
+
+  .bento-item-4x2 {
+    @apply col-span-4 row-span-2;
+  }
+
+  /* SCROLLBAR */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
   }
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 24px;
-  border: 2px solid rgba(59, 130, 246, 0.2);
-  box-shadow:
-    0 10px 40px rgba(59, 130, 246, 0.15),
-    0 0 0 1px rgba(255, 255, 255, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-card:hover {
-  border-color: rgba(236, 72, 153, 0.4);
-  box-shadow:
-    0 20px 60px rgba(236, 72, 153, 0.25),
-    0 0 0 1px rgba(255, 255, 255, 0.8),
-    0 0 40px rgba(236, 72, 153, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
-  transform: translateY(-4px) scale(1.02);
-}
-
-.glass {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  border: 2px solid rgba(59, 130, 246, 0.3);
-  box-shadow:
-    0 8px 32px rgba(59, 130, 246, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-
-/* ============================================
-   VIBRANT COLOR UTILITIES
-   ============================================ */
-
-.vibrant-blue {
-  color: #1e40af;
-  font-weight: 800;
-  text-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
-}
-
-.vibrant-pink {
-  color: #be185d;
-  font-weight: 800;
-  text-shadow: 0 2px 10px rgba(236, 72, 153, 0.3);
-}
-
-.vibrant-purple {
-  color: #6b21a8;
-  font-weight: 800;
-  text-shadow: 0 2px 10px rgba(168, 85, 247, 0.3);
-}
-
-.vibrant-orange {
-  color: #c2410c;
-  font-weight: 800;
-  text-shadow: 0 2px 10px rgba(249, 115, 22, 0.3);
-}
-
-.vibrant-green {
-  color: #15803d;
-  font-weight: 800;
-  text-shadow: 0 2px 10px rgba(34, 197, 94, 0.3);
-}
-
-.aggressive-border-blue {
-  border: 3px solid #3b82f6;
-  box-shadow: 0 0 30px rgba(59, 130, 246, 0.4),
-    inset 0 0 20px rgba(59, 130, 246, 0.1);
-}
-
-.aggressive-border-pink {
-  border: 3px solid #ec4899;
-  box-shadow: 0 0 30px rgba(236, 72, 153, 0.4),
-    inset 0 0 20px rgba(236, 72, 153, 0.1);
-}
-
-.aggressive-border-purple {
-  border: 3px solid #a855f7;
-  box-shadow: 0 0 30px rgba(168, 85, 247, 0.4),
-    inset 0 0 20px rgba(168, 85, 247, 0.1);
-}
-
-/* ============================================
-   AGGRESSIVE 3D EFFECTS
-   ============================================ */
-
-.elevation-aggressive {
-  box-shadow:
-    0 25px 70px rgba(59, 130, 246, 0.3),
-    0 10px 30px rgba(236, 72, 153, 0.2),
-    0 0 0 2px rgba(255, 255, 255, 0.9),
-    inset 0 2px 0 rgba(255, 255, 255, 1);
-  transform: translateZ(0);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.elevation-aggressive:hover {
-  box-shadow:
-    0 35px 90px rgba(59, 130, 246, 0.4),
-    0 15px 40px rgba(236, 72, 153, 0.3),
-    0 0 0 3px rgba(255, 255, 255, 1),
-    0 0 60px rgba(168, 85, 247, 0.3),
-    inset 0 2px 0 rgba(255, 255, 255, 1);
-  transform: translateY(-8px) scale(1.03) translateZ(0);
-}
-
-/* ============================================
-   ENERGETIC ANIMATIONS
-   ============================================ */
-
-@keyframes energeticPulse {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5),
-      0 0 40px rgba(236, 72, 153, 0.3);
-    transform: scale(1);
-  }
-
-  50% {
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.8),
-      0 0 60px rgba(236, 72, 153, 0.5);
-    transform: scale(1.05);
-  }
-}
-
-.energetic-pulse {
-  animation: energeticPulse 2s ease-in-out infinite;
-}
-
-@keyframes rainbowShift {
-  0% {
-    filter: hue-rotate(0deg) saturate(1.2);
-  }
-
-  100% {
-    filter: hue-rotate(360deg) saturate(1.2);
-  }
-}
-
-.rainbow-animation {
-  animation: rainbowShift 5s linear infinite;
-}
-
-@keyframes bounceIn {
-  0% {
-    transform: scale(0.8) translateY(20px);
+/* Animations */
+@keyframes fadeIn {
+  from {
     opacity: 0;
+    transform: translateY(10px);
   }
 
-  50% {
-    transform: scale(1.05) translateY(-5px);
-  }
-
-  100% {
-    transform: scale(1) translateY(0);
+  to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.bounce-in {
-  animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
 }
 
-/* ============================================
-   COLORFUL SCROLLBAR
-   ============================================ */
-
-::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-
-::-webkit-scrollbar-track {
-  background: linear-gradient(180deg, #f0f9ff, #fef3c7);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #3b82f6, #ec4899, #a855f7);
-  border-radius: 10px;
-  border: 2px solid #ffffff;
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #2563eb, #db2777, #9333ea);
-  box-shadow: 0 0 20px rgba(236, 72, 153, 0.7);
-}
-
-/* ============================================
-   SMOOTH TRANSITIONS
-   ============================================ */
-
-.value-transition {
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ============================================
-   AGGRESSIVE PULSE ANIMATIONS
-   ============================================ */
-
-@keyframes pulse-aggressive-blue {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
-  }
-
-  50% {
-    box-shadow: 0 0 50px rgba(59, 130, 246, 1);
-  }
-}
-
-@keyframes pulse-aggressive-pink {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(236, 72, 153, 0.6);
-  }
-
-  50% {
-    box-shadow: 0 0 50px rgba(236, 72, 153, 1);
-  }
-}
-
-@keyframes pulse-aggressive-rainbow {
-  0% {
-    box-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
-  }
-
-  33% {
-    box-shadow: 0 0 30px rgba(236, 72, 153, 0.8);
-  }
-
-  66% {
-    box-shadow: 0 0 30px rgba(168, 85, 247, 0.8);
-  }
-
-  100% {
-    box-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
-  }
-}
-
-.pulse-glow {
-  animation: pulse-aggressive-rainbow 2s ease-in-out infinite;
-}
-
-.pulse-glow-cyan {
-  animation: pulse-aggressive-blue 1.5s ease-in-out infinite;
-}
-
-.pulse-glow-pink {
-  animation: pulse-aggressive-pink 1.5s ease-in-out infinite;
-}
-
-/* ============================================
-   UTILITY CLASSES
-   ============================================ */
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.5);
-  border-radius: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #3b82f6, #ec4899);
-  border-radius: 4px;
-  border: 1px solid #ffffff;
-}
-
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Vibrant Text Gradient */
-.text-gradient {
-  background: linear-gradient(135deg, #3b82f6 0%, #ec4899 25%, #a855f7 50%, #f59e0b 75%, #10b981 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 900;
-  background-size: 200% 200%;
-  animation: gradientFlow 3s ease infinite;
-}
-
-@keyframes gradientFlow {
-
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-/* Aggressive Shadow */
-.aggressive-shadow {
-  box-shadow:
-    0 20px 50px rgba(59, 130, 246, 0.3),
-    0 10px 30px rgba(236, 72, 153, 0.2),
-    0 5px 15px rgba(168, 85, 247, 0.2);
+/* Chart Tooltip Customization */
+.recharts-tooltip-cursor {
+  fill: #F1F5F9;
 }

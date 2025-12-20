@@ -68,9 +68,9 @@ export default function Signup() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen flex items-center justify-center p-4 relative"
+      className="min-h-screen flex items-center justify-center p-4"
     >
-      <div className="w-full max-w-md relative z-10 perspective-1000">
+      <div className="w-full max-w-md">
 
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
@@ -78,31 +78,29 @@ export default function Signup() {
           transition={{ duration: 0.5 }}
           className="text-center mb-8"
         >
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-tr from-accent-fuchsia to-accent-cyan rounded-full p-[2px] mb-4 shadow-2xl animate-spin-slow">
-            <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center">
-              <Activity className="w-10 h-10 text-white" />
-            </div>
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl shadow-xl mb-6">
+            <Activity className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white via-blue-200 to-white mb-2 filter drop-shadow hover:scale-105 transition-transform duration-300">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Create Account
           </h1>
-          <p className="text-blue-200/70 font-medium">Join the revolution in machine monitoring</p>
+          <p className="text-gray-600">Join the revolution in machine monitoring</p>
         </motion.div>
 
         <motion.div
-          initial={{ y: 50, opacity: 0 }}
+          initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1, type: "spring" }}
-          className="glass-card-dark shadow-[0_0_50px_rgba(0,0,0,0.3)] relative group border border-white/10"
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8"
         >
           {error && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
-              className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl flex items-start gap-3 backdrop-blur-sm"
+              className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3"
             >
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-200">{error}</p>
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{error}</p>
             </motion.div>
           )}
 
@@ -110,14 +108,14 @@ export default function Signup() {
 
             {/* Name */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-blue-200/80 uppercase tracking-wider ml-1">Full Name</label>
-              <div className="relative group/input">
-                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-blue-300/50 group-focus-within/input:text-accent-cyan transition-colors" />
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Full Name</label>
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-blue-300/30 focus:outline-none focus:bg-white/10 focus:border-accent-cyan/50 focus:ring-1 focus:ring-accent-cyan/50 transition-all duration-300"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                   placeholder="John Doe"
                   required
                 />
@@ -126,14 +124,14 @@ export default function Signup() {
 
             {/* Email */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-blue-200/80 uppercase tracking-wider ml-1">Email</label>
-              <div className="relative group/input">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-300/50 group-focus-within/input:text-accent-fuchsia transition-colors" />
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Email</label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-blue-300/30 focus:outline-none focus:bg-white/10 focus:border-accent-fuchsia/50 focus:ring-1 focus:ring-accent-fuchsia/50 transition-all duration-300"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all"
                   placeholder="you@example.com"
                   required
                 />
@@ -142,33 +140,33 @@ export default function Signup() {
 
             {/* Password */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-blue-200/80 uppercase tracking-wider ml-1">Password</label>
-              <div className="relative group/input">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-300/50 group-focus-within/input:text-accent-violet transition-colors" />
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Password</label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-pink-500 transition-colors" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-blue-300/30 focus:outline-none focus:bg-white/10 focus:border-accent-violet/50 focus:ring-1 focus:ring-accent-violet/50 transition-all duration-300"
+                  className="w-full pl-12 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 transition-all"
                   placeholder="••••••••"
                   required
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-300/50 hover:text-white transition-colors">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
 
               {passwordStrength && (
                 <div className="mt-2 flex items-center gap-2 px-1">
-                  <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <motion.div
-                      className={`h-full ${passwordStrength.color} shadow-[0_0_10px_currentColor]`}
+                      className={`h-full ${passwordStrength.color}`}
                       initial={{ width: 0 }}
                       animate={{ width: passwordStrength.width }}
                       transition={{ duration: 0.3 }}
                     ></motion.div>
                   </div>
-                  <span className="text-xs font-medium text-blue-200">
+                  <span className="text-xs font-medium text-gray-500">
                     {passwordStrength.text}
                   </span>
                 </div>
@@ -177,18 +175,18 @@ export default function Signup() {
 
             {/* Confirm Password */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-blue-200/80 uppercase tracking-wider ml-1">Confirm Password</label>
-              <div className="relative group/input">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-300/50 group-focus-within/input:text-accent-cyan transition-colors" />
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Confirm Password</label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-blue-300/30 focus:outline-none focus:bg-white/10 focus:border-accent-cyan/50 focus:ring-1 focus:ring-accent-cyan/50 transition-all duration-300"
+                  className="w-full pl-12 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                   placeholder="••••••••"
                   required
                 />
-                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-300/50 hover:text-white transition-colors">
+                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
@@ -196,44 +194,37 @@ export default function Signup() {
               {confirmPassword && (
                 <div className="h-6 flex items-center px-1">
                   {password === confirmPassword ? (
-                    <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 text-green-400">
+                    <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 text-green-600">
                       <CheckCircle className="w-3 h-3" />
                       <span className="text-xs font-bold">Match</span>
                     </motion.div>
                   ) : (
-                    <span className="text-xs text-red-300/80 pl-6">Passwords do not match</span>
+                    <span className="text-xs text-red-500 pl-6">Passwords do not match</span>
                   )}
                 </div>
               )}
             </div>
 
             <motion.button
-              whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(6, 182, 212, 0.5)" }}
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={loading}
-              className="w-full mt-4 bg-gradient-to-r from-accent-cyan to-blue-600 text-white py-4 rounded-xl font-bold shadow-lg border border-white/20 relative overflow-hidden group/btn"
+              className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-xl hover:opacity-90 transition-all flex items-center justify-center gap-2"
             >
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                {loading ? "Creating..." : "Create Account"} <Zap className="w-4 h-4 fill-current" />
-              </span>
-              <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-700"></div>
+              {loading ? "Creating..." : "Create Account"} <Zap className="w-4 h-4 fill-current" />
             </motion.button>
           </form>
 
-          <div className="mt-8 text-center border-t border-white/10 pt-6">
-            <p className="text-sm text-blue-200/60">
+          <div className="mt-8 text-center border-t border-gray-100 pt-6">
+            <p className="text-sm text-gray-500">
               Already have an account?{" "}
-              <Link to="/login" className="text-accent-fuchsia font-bold hover:text-white transition-colors ml-1">
+              <Link to="/login" className="text-blue-600 font-bold hover:text-blue-700 transition-colors ml-1">
                 Sign in
               </Link>
             </p>
           </div>
         </motion.div>
-
-        <p className="text-center text-blue-200/30 text-xs mt-8 font-mono">
-          SECURE • ENCRYPTED • FAST
-        </p>
       </div>
     </motion.div>
   );
